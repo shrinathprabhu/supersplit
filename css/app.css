@@ -126,6 +126,15 @@ a { color: var(--brand-soft); }
 .brandmark b { font-size: 1.2rem; letter-spacing: -0.02em; }
 .brandmark b i { font-style: normal; color: var(--brand-soft); }
 
+.home-back-link {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.home-back-link:hover { color: var(--text-dim); }
+
 /* --------------------------------------------------------------- buttons */
 
 .btn {

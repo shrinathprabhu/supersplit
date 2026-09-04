@@ -24,6 +24,7 @@ export function homeScreen() {
         'div',
         { class: 'appbar__inner wrap' },
         h('div', { class: 'brandmark grow' }, logoNode(), h('b', {}, 'Super', h('i', {}, 'Split'))),
+        h('a', { class: 'home-back-link', href: 'https://lowkey.tools', 'aria-label': 'Back to lowkey.tools' }, '← lowkey.tools'),
         h('button', { class: 'btn btn--icon', 'aria-label': 'Settings', onClick: openSettings }, icon('settings', 20)),
       ),
     ),
