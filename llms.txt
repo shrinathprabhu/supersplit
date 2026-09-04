@@ -17,9 +17,8 @@ https://github.com/shrinathprabhu/supersplit. It is built by Shrinath Prabhu
   your own position.
 - **Expenses.** Enter the amount before tax, then attach any number of taxes
   and fees, each a percentage (GST 18%) or a flat amount (a 300 rupee service
-  charge). Negative amounts act as discounts and coupons. Each tax is spread
-  either by share, in proportion to what each person consumed, or equally for
-  flat per-head charges.
+  charge). Each tax is spread either by share, in proportion to what each
+  person consumed, or equally for flat per-head charges.
 - **Bill round-off.** Shops round the printed total, so 103.33 becomes 103 or
   104. Choose nearest whole unit (the GST rule, where 50 paise and over rounds
   up), always round up, or type the exact printed figure. The difference is
@@ -28,7 +27,7 @@ https://github.com/shrinathprabhu/supersplit. It is built by Shrinath Prabhu
 - **Who paid.** One person or several, splitting what they put in equally, by
   exact amounts, or by percentage.
 - **How it splits.** Equally, by exact amounts, by percentage, or by shares
-  (1x, 2x, 0x), and anyone not involved can be deselected.
+  (1x, 2x and so on), and anyone not involved can be deselected.
 - **Settle up.** Two views of the same balances. Actual debts means everyone
   pays back whoever covered them, with debts inside a pair and circular debt
   cancelled. Simplified debts re-routes the same balances into the fewest

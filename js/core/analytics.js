@@ -14,7 +14,7 @@ export function dayRange(fromKey, toKey) {
   const out = [];
   let cursor = new Date(fromKey + 'T00:00:00');
   const end = new Date(toKey + 'T00:00:00');
-  let guard = 800;
+  let guard = 4000;
   while (cursor <= end && guard-- > 0) {
     out.push(toDateKey(cursor));
     cursor = addDays(cursor, 1);
@@ -63,25 +63,39 @@ export function groupDaily(ledger) {
   };
 }
 
-/** Daily spend across every group, in the currency each group uses. */
-export function allGroupsDaily(groups, ledgerFor, { days = 30 } = {}) {
+/**
+ * Daily spend across every group, in the currency each group uses. The home
+ * chart starts on the first expense and runs through today, so the daily
+ * average is the amount spent per elapsed day since tracking began.
+ */
+export function allGroupsDaily(groups, ledgerFor) {
   const today = toDateKey(new Date());
-  const start = toDateKey(addDays(new Date(), -(days - 1)));
   const totals = new Map();
-  let any = false;
+  let first = null;
   for (const group of groups) {
     const ledger = ledgerFor(group.id);
     if (!ledger) continue;
     for (const expense of ledger.expenses) {
-      if (expense.date < start || expense.date > today) continue;
+      // Match the old home-chart behaviour for future-dated expenses: they
+      // join the series once their date arrives.
+      if (expense.date > today) continue;
       const c = ledger.computed.get(expense.id);
       totals.set(expense.date, (totals.get(expense.date) || 0) + c.total);
-      any = true;
+      if (!first || expense.date < first) first = expense.date;
     }
   }
-  const points = dayRange(start, today).map((date) => ({ date, values: [totals.get(date) || 0] }));
+  if (!first) return { points: [], total: 0, any: false, perDay: 0, from: null, to: null };
+
+  const points = dayRange(first, today).map((date) => ({ date, values: [totals.get(date) || 0] }));
   const total = points.reduce((a, p) => a + p.values[0], 0);
-  return { points, total, any, perDay: points.length ? Math.round(total / points.length) : 0 };
+  return {
+    points,
+    total,
+    any: true,
+    perDay: points.length ? Math.round(total / points.length) : 0,
+    from: first,
+    to: today,
+  };
 }
 
 export function monthKey(dateKey) {

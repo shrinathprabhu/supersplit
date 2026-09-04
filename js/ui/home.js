@@ -1,6 +1,6 @@
 // Home: the list of groups, plus app-level settings.
 
-import { h, clear, download, listNames } from '../util/dom.js';
+import { h, clear, download, listNames, fmtDate } from '../util/dom.js';
 import { icon } from './icons.js';
 import { openSheet, toast, confirmSheet, chooseSheet } from './shell.js';
 import { avatarStack, emptyState, segmented } from './components.js';
@@ -67,7 +67,7 @@ function insightsPanels(groups) {
   const inScope = groups.filter((g) => g.currency === code);
   const skipped = groups.length - inScope.length;
 
-  const daily = allGroupsDaily(inScope, ledgerFor, { days: 30 });
+  const daily = allGroupsDaily(inScope, ledgerFor);
   const totals = groupTotals(inScope, ledgerFor).filter((t) => t.all > 0);
   if (!daily.any && !totals.length) return null;
 
@@ -77,14 +77,19 @@ function insightsPanels(groups) {
     h(
       'div',
       { class: 'card' },
-      h('div', { class: 'chart-head' }, h('h4', { text: 'Daily spend' }), h('span', { class: 'tiny muted', text: 'last 30 days' })),
+      h(
+        'div',
+        { class: 'chart-head' },
+        h('h4', { text: 'Daily spend' }),
+        h('span', { class: 'tiny muted', text: daily.from ? `since ${fmtDate(daily.from)}` : '' }),
+      ),
       lineChart({
         points: daily.points,
         series: [{ name: 'All groups', color: CHART_COLORS[0] }],
         currency: code,
       }),
       statRow([
-        { label: 'Last 30 days', value: fmt(daily.total, code) },
+        { label: 'Total spent', value: fmt(daily.total, code) },
         { label: 'Per day', value: fmt(daily.perDay, code) },
         { label: 'Groups', value: String(inScope.length) },
       ]),
@@ -341,6 +346,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 export function openSettings() {
+  const unsettled = store.groups.filter((group) => {
+    const ledger = ledgerFor(group.id);
+    return ledger?.memberIds.some((id) => (ledger.net[id] || 0) !== 0);
+  });
+  const eraseBlocked = unsettled.length > 0;
+
   const ctx = openSheet({
     title: 'SuperSplit',
     subtitle: 'Offline bill splitting · no account, no server',
@@ -408,7 +419,13 @@ export function openSettings() {
           'button',
           {
             class: 'list__item',
+            'aria-disabled': String(eraseBlocked),
+            style: eraseBlocked ? { opacity: '0.55' } : {},
             onClick: async () => {
+              if (eraseBlocked) {
+                toast(`Settle ${listNames(unsettled.map((group) => group.name), 2)} before erasing all data`, 'bad');
+                return;
+              }
               const ok = await confirmSheet({
                 title: 'Erase everything?',
                 message: 'Every group, expense and settlement on this device will be deleted. There is no cloud copy.',
@@ -422,7 +439,14 @@ export function openSettings() {
             },
           },
           icon('trash', 19),
-          h('span', { class: 'grow bad' }, 'Erase all data'),
+          h(
+            'div',
+            { class: 'grow' },
+            h('div', { class: eraseBlocked ? '' : 'bad' }, 'Erase all data'),
+            eraseBlocked
+              ? h('div', { class: 'tiny muted' }, `${unsettled.length} unsettled ${unsettled.length === 1 ? 'group' : 'groups'} must be settled first`)
+              : null,
+          ),
         ),
       ),
       h(

@@ -33,25 +33,76 @@ export function avatarStack(members, max = 4, size = 28) {
 }
 
 /**
+ * Keep a numeric field to digits and one decimal point. Extra decimal places
+ * remain visible while typing and are rounded when the field is committed.
+ * A pasted negative is rejected instead of silently turning positive.
+ */
+function sanitiseNumeric(raw) {
+  const text = String(raw ?? '');
+  const minus = text.search(/[-−]/);
+  const firstDigit = text.search(/\d/);
+  if (minus >= 0 && (firstDigit < 0 || minus < firstDigit)) return '';
+
+  let body = text.replace(/[^\d.]/g, '');
+  const dot = body.indexOf('.');
+  if (dot >= 0) {
+    body = body.slice(0, dot + 1) + body.slice(dot + 1).replace(/\./g, '');
+  }
+  return body;
+}
+
+/** Clean the field in place, leaving the caret where the typing left off. */
+function guardNumeric(input) {
+  const clean = () => {
+    const before = input.value;
+    const after = sanitiseNumeric(before);
+    if (after === before) return;
+    const caret = input.selectionStart ?? before.length;
+    const kept = sanitiseNumeric(before.slice(0, caret)).length;
+    input.value = after;
+    try {
+      input.setSelectionRange(kept, kept);
+    } catch {
+      /* some input types refuse a selection range */
+    }
+  };
+  input.addEventListener('input', clean);
+  input.addEventListener('paste', () => setTimeout(clean));
+  return clean;
+}
+
+/**
  * Money input bound to integer minor units.
  * onChange receives (minorUnits|null, rawString).
  */
-export function moneyInput({ currency, value, onChange, size = 'md', placeholder = '0', autofocus = false, bare = false }) {
+export function moneyInput({
+  currency,
+  value,
+  onChange,
+  size = 'md',
+  placeholder = '0',
+  autofocus = false,
+  bare = false,
+}) {
   const c = cur(currency);
   const input = h('input', {
     type: 'text',
-    inputmode: 'decimal',
+    inputmode: c.decimals ? 'decimal' : 'numeric',
+    autocomplete: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
     placeholder,
     value: value === null || value === undefined || value === 0 ? '' : toDecimalString(value, currency),
-    onInput: () => {
-      const raw = input.value;
-      onChange(parseAmount(raw, currency), raw);
-    },
     onBlur: () => {
       const parsed = parseAmount(input.value, currency);
-      if (parsed !== null) input.value = toDecimalString(parsed, currency);
+      input.value = parsed !== null && parsed > 0 ? toDecimalString(parsed, currency) : '';
+      onChange(parsed !== null && parsed > 0 ? parsed : null, input.value);
     },
   });
+  // Attached before the change handler so onChange only ever sees a value
+  // that has already been cleaned.
+  guardNumeric(input);
+  input.addEventListener('input', () => onChange(parseAmount(input.value, currency), input.value));
   if (autofocus) setTimeout(() => input.focus(), 300);
   const wrap = h(
     'div',
@@ -65,14 +116,30 @@ export function moneyInput({ currency, value, onChange, size = 'md', placeholder
 }
 
 /** Plain numeric input (percent / share weights). */
-export function numberInput({ value, onChange, suffix = '', placeholder = '0' }) {
+export function numberInput({ value, onChange, suffix = '', placeholder = '0', decimals = 2 }) {
   const input = h('input', {
     type: 'text',
     inputmode: 'decimal',
+    autocomplete: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
     placeholder,
     value: value === null || value === undefined || value === 0 ? '' : String(value),
-    onInput: () => onChange(parseNumber(input.value), input.value),
+    onBlur: () => {
+      const parsed = parseNumber(input.value);
+      if (parsed === null || parsed <= 0) {
+        input.value = '';
+        onChange(null, input.value);
+        return;
+      }
+      const factor = Math.pow(10, decimals);
+      const rounded = roundForInput(parsed, factor);
+      input.value = String(rounded);
+      onChange(rounded, input.value);
+    },
   });
+  guardNumeric(input);
+  input.addEventListener('input', () => onChange(parseNumber(input.value), input.value));
   const wrap = h(
     'div',
     { class: 'input-money input-money--sm' },
@@ -81,6 +148,12 @@ export function numberInput({ value, onChange, suffix = '', placeholder = '0' })
   );
   wrap.input = input;
   return wrap;
+}
+
+function roundForInput(value, factor) {
+  // The small relative epsilon keeps decimal ties such as 1.005 on the
+  // expected half-up side despite binary floating-point representation.
+  return Math.round((value + Number.EPSILON * Math.max(1, value)) * factor) / factor;
 }
 
 export function segmented(options, value, onChange, opts = {}) {

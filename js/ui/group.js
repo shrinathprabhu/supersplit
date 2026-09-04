@@ -499,6 +499,50 @@ function openMemberSheet(group, member, rerender) {
 
 // ------------------------------------------------------------- group menu
 
+/**
+ * Deleting a group with money still moving would quietly write off whatever
+ * people owe each other, so it stays locked until the balances are clear.
+ */
+function deleteGroupItem(group, ledger, closeMenu) {
+  const outstandingMembers = ledger.memberIds.filter((id) => (ledger.net[id] || 0) !== 0);
+  const outstanding = outstandingMembers.length > 0;
+
+  return h(
+    'button',
+    {
+      class: 'list__item',
+      'aria-disabled': String(outstanding),
+      style: outstanding ? { opacity: '0.55' } : {},
+      onClick: async () => {
+        if (outstanding) {
+          const names = outstandingMembers.map((id) => group.members.find((m) => m.id === id)?.name).filter(Boolean);
+          toast(`${listNames(names, 2)} still have balances to settle`, 'bad');
+          closeMenu();
+          navigate(`#/g/${group.id}/settle`);
+          return;
+        }
+        const ok = await confirmSheet({
+          title: `Delete “${group.name}”?`,
+          message: `Everyone is settled up. ${ledger.expenses.length} expense${ledger.expenses.length === 1 ? '' : 's'} and the whole history will be gone for good.`,
+          confirmLabel: 'Delete group',
+          danger: true,
+        });
+        if (!ok) return;
+        await deleteGroup(group.id);
+        navigate('#/');
+        toast('Group deleted');
+      },
+    },
+    icon('trash', 19),
+    h(
+      'div',
+      { class: 'grow' },
+      h('div', { class: outstanding ? '' : 'bad' }, 'Delete group'),
+      outstanding ? h('div', { class: 'tiny muted' }, 'Settle up first') : null,
+    ),
+  );
+}
+
 function openGroupMenu(group, rerender) {
   const ledger = ledgerFor(group.id);
   const ctx = openSheet({
@@ -570,26 +614,9 @@ function openGroupMenu(group, rerender) {
           icon('download', 19),
           h('div', { class: 'grow' }, h('div', {}, 'Export this group'), h('div', { class: 'tiny muted' }, 'Share it with someone, or move it to another browser')),
         ),
-        h(
-          'button',
-          {
-            class: 'list__item',
-            onClick: async () => {
-              const ok = await confirmSheet({
-                title: `Delete “${group.name}”?`,
-                message: `${ledger.expenses.length} expense${ledger.expenses.length === 1 ? '' : 's'} and all balances will be gone for good.`,
-                confirmLabel: 'Delete group',
-                danger: true,
-              });
-              if (!ok) return;
-              await deleteGroup(group.id);
-              navigate('#/');
-              toast('Group deleted');
-            },
-          },
-          icon('trash', 19),
-          h('span', { class: 'grow bad' }, 'Delete group'),
-        ),
+        // openSheet renders synchronously, before `ctx` is assigned. Deferring
+        // the lookup inside a callback keeps the menu safe to construct.
+        deleteGroupItem(group, ledger, () => ctx.close()),
       ),
     ],
   });

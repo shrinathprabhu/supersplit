@@ -33,7 +33,6 @@ and every screen shows your own position.
 and fees:
 
 - a percentage (GST 18%) or a flat amount (₹300 service charge)
-- negative amounts work as discounts and coupons
 - each one is spread either **by share**, in proportion to what each person
   actually consumed, or **equally**, for flat per-head fees like a cover charge
 
@@ -48,7 +47,7 @@ amounts, or by percentage. The amounts have to add up to the total, and the app
 shows how much is left over while you type.
 
 **How it splits.** Equally, by exact amounts, by percentage, or by shares
-(1x, 2x, 0x). Deselect anyone who was not in on it. Splits apply to the pre-tax
+(1x, 2x and so on). Deselect anyone who was not in on it. Splits apply to the pre-tax
 amount; taxes, fees and the round-off ride along on top. The editor shows the
 pre-tax share you typed with the extras noted beside it, and the saved expense
 shows the all-in figure.
@@ -98,10 +97,11 @@ average and the busiest day. The window runs from the first expense to the
 last, so it covers exactly the stretch the group was in use, and the daily
 average means something. A span of three days or fewer is drawn as bars, since
 a line through one point is not a line.
-The home screen shows daily spend across every group and a breakdown of which
-group the money goes to, either for this month or as a monthly average. Hover
-or tap a chart for exact figures, and every total is printed on the page as
-well.
+The home screen shows daily spend across every group from the first recorded
+expense through today, with the per-day average covering that same elapsed
+period. It also breaks down which group the money goes to, either for this
+month or as a monthly average. Hover or tap a chart for exact figures, and
+every total is printed on the page as well.
 
 **Sharing.** From a whole group or from a single debt:
 

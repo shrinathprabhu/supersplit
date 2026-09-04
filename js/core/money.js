@@ -54,25 +54,34 @@ export function roundHalfUp(n) {
 }
 
 /**
- * Parse user input ("1,234.50", "12", ".5", "-8") into minor units.
- * Returns null when the string is not a usable number.
+ * Parse non-negative user input ("1,234.50", "12", ".5") into minor units.
+ * Extra decimal places are rounded half up instead of truncated. Returns
+ * null when the string is not a usable, safely representable amount.
  */
 export function parseAmount(input, code) {
   if (input === null || input === undefined) return null;
   const raw = String(input).trim().replace(/[,\s ]/g, '');
-  if (raw === '' || raw === '-' || raw === '.') return null;
-  if (!/^-?\d*\.?\d*$/.test(raw)) return null;
-  const value = Number(raw);
-  if (!Number.isFinite(value)) return null;
-  return roundHalfUp(value * unitScale(code));
+  if (raw === '' || raw === '.') return null;
+  if (!/^\d*\.?\d*$/.test(raw)) return null;
+
+  const decimals = currency(code).decimals;
+  const [whole = '', fraction = ''] = raw.split('.');
+  if (!whole && !fraction) return null;
+
+  const scale = BigInt(unitScale(code));
+  const kept = fraction.slice(0, decimals).padEnd(decimals, '0');
+  let minor = BigInt(whole || '0') * scale + BigInt(kept || '0');
+  if (fraction.length > decimals && fraction.charCodeAt(decimals) >= 53) minor += 1n;
+  if (minor > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  return Number(minor);
 }
 
-/** Parse a plain number (percent, share weight). */
+/** Parse a non-negative plain number (percent, share weight). */
 export function parseNumber(input) {
   if (input === null || input === undefined) return null;
   const raw = String(input).trim().replace(/[,\s ]/g, '');
-  if (raw === '' || raw === '-' || raw === '.') return null;
-  if (!/^-?\d*\.?\d*$/.test(raw)) return null;
+  if (raw === '' || raw === '.') return null;
+  if (!/^\d*\.?\d*$/.test(raw)) return null;
   const value = Number(raw);
   return Number.isFinite(value) ? value : null;
 }

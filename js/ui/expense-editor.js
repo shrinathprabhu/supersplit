@@ -55,12 +55,29 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
 
   // ------------------------------------------------------------ validation
 
+  function hasNonPositiveValue(section) {
+    return (
+      section.mode !== 'equal' &&
+      section.members.some((id) => !Number.isFinite(Number(section.values[id])) || Number(section.values[id]) <= 0)
+    );
+  }
+
   function problems() {
     const list = [];
     if (!draft.description.trim()) list.push('Give the expense a title.');
-    if (draft.subtotal === 0 && computed.taxTotal === 0) list.push('Enter an amount.');
+    if (!Number.isFinite(draft.subtotal) || draft.subtotal <= 0) list.push('Enter an amount greater than zero.');
+    if (draft.taxes.some((tax) => !Number.isFinite(Number(tax.value)) || Number(tax.value) <= 0)) {
+      list.push('Tax and fee values must be greater than zero.');
+    }
+    if (draft.subtotal > 0 && computed.total <= 0) list.push('The total must be greater than zero.');
     if (!draft.payers.members.length) list.push('Choose who paid.');
+    if (hasNonPositiveValue(draft.payers)) {
+      list.push('Every payer value must be greater than zero. Deselect anyone who did not pay.');
+    }
     if (!draft.split.members.length) list.push('Choose who to split it between.');
+    if (hasNonPositiveValue(draft.split)) {
+      list.push('Every split value must be greater than zero. Deselect anyone not included.');
+    }
     for (const err of computed.errors) {
       if (err.code === 'sum') list.push(err.message);
     }
