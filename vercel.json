@@ -146,5 +146,8 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/supersplit/:path*", "destination": "/:path*" }
   ]
 }
