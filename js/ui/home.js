@@ -449,6 +449,13 @@ export function openSettings() {
           h('div', { class: 'grow' }, h('div', {}, 'From the makers of OwlEye Analytics'), h('div', { class: 'tiny muted' }, 'Privacy-first product analytics')),
           icon('share', 16),
         ),
+        h(
+          'a',
+          { class: 'list__item', href: 'https://lowkey.tools', target: '_blank', rel: 'noopener', style: { textDecoration: 'none', color: 'inherit' } },
+          icon('sparkle', 19),
+          h('div', { class: 'grow' }, h('div', {}, 'More tools at lowkey.tools'), h('div', { class: 'tiny muted' }, 'Superbrain, Favigen and more')),
+          icon('share', 16),
+        ),
       ),
       h('div', { class: 'tiny muted center', style: { marginTop: '14px' } }, 'SuperSplit 1.0, built by ', h('a', { href: 'https://shrinath.me', target: '_blank', rel: 'noopener' }, 'Shrinath Prabhu')),
     ],
