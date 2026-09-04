@@ -192,10 +192,73 @@ The mark is a receipt with a torn edge whose face is a calculator. It is drawn
 in code (`js/export/paint.js`) as well as in SVG, so it renders at any size and
 appears on every export.
 
+## Discoverability
+
+The page is a client-rendered app, so a crawler that does not run JavaScript
+would otherwise see an empty shell. Three things fix that, and none of them
+involve serving different content to crawlers than to people:
+
+- the HTML ships a real splash (logo, `h1`, a sentence saying what the app is)
+  which doubles as the loading screen, plus a `noscript` block spelling out
+  every feature
+- `application/ld+json` carries a `WebApplication`, an `Organization`, a
+  `WebSite` and a nine-question `FAQPage`, which is what answer engines quote
+- `llms.txt` is a plain-language summary of the whole app for model crawlers,
+  following the llmstxt.org convention
+
+`robots.txt` allows everything and names the AI crawlers explicitly (GPTBot,
+ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended, CCBot and the
+rest). There is nothing private to protect here: no accounts, no server, no
+user data.
+
+Open Graph and Twitter cards point at `assets/og-image.png`, a 1200x630 card
+generated from `assets/og.svg`. Regenerate it by editing the SVG and rendering
+it at 1200 square, then cropping the middle 630.
+
 ## Deploying
 
 `vercel.json` carries the production headers. Any static host works, but if you
-use something else, mirror these:
+use something else, mirror these.
+
+### Serving it under a path
+
+Every URL in the app is relative, so it runs from any path without changes,
+but it has to be reached *with* a trailing slash. At `/supersplit` the browser
+resolves `./js/app.js` against the parent directory and the app never loads;
+at `/supersplit/` everything resolves correctly. Verified both ways in a
+browser.
+
+If a parent site proxies this app onto a path, for example
+
+```json
+{ "source": "/supersplit/:path*", "destination": "https://supersplit.example.com/:path*" }
+```
+
+then the parent site also needs the redirect that adds the slash, because only
+it can change its own URL:
+
+```json
+"redirects": [
+  { "source": "/supersplit", "destination": "/supersplit/", "permanent": true }
+]
+```
+
+Vercel applies redirects before rewrites, so this runs first. This project
+deliberately leaves `trailingSlash` off: behind a path rewrite, an origin-side
+slash redirect would send a `Location` that resolves against the parent domain
+and drop the path prefix.
+
+Two more things follow from being proxied onto a path:
+
+- **`robots.txt`, `sitemap.xml` and `llms.txt` here only count for this
+  project's own domain.** Crawlers read them from the root of whatever host
+  they are on, so the parent site needs its own root `robots.txt` listing
+  `Sitemap: https://parent.example.com/supersplit/sitemap.xml`, and its own
+  root `llms.txt`.
+- **The two hosts are different origins, so they hold different data.** A
+  group created on `parent.example.com/supersplit/` is not visible on
+  `supersplit.example.com`. Publish and link one of them; the canonical tag
+  already points at the path version.
 
 **Caching.** The font and the vendored library never change, so they get a year
 with `immutable`. HTML, `sw.js` and the manifest must always revalidate, or a

@@ -431,6 +431,25 @@ export function openSettings() {
         h('div', { class: 'small dim' }, 'Everything lives in this browser, in ', h('b', {}, store.mode === 'indexeddb' ? 'IndexedDB' : 'local storage'), '. Nothing is uploaded, there is no account, and the app keeps working with no connection at all.'),
         h('div', { class: 'tiny muted', style: { marginTop: '8px' } }, 'Clearing site data in your browser will delete it, so take a backup before you do.'),
       ),
+      h(
+        'div',
+        { class: 'list', style: { marginTop: '12px' } },
+        h(
+          'a',
+          { class: 'list__item', href: 'https://github.com/shrinathprabhu/supersplit', target: '_blank', rel: 'noopener', style: { textDecoration: 'none', color: 'inherit' } },
+          icon('file', 19),
+          h('div', { class: 'grow' }, h('div', {}, 'Source on GitHub'), h('div', { class: 'tiny muted' }, 'Free and open source')),
+          icon('share', 16),
+        ),
+        h(
+          'a',
+          { class: 'list__item', href: 'https://owleye.dev', target: '_blank', rel: 'noopener', style: { textDecoration: 'none', color: 'inherit' } },
+          icon('sparkle', 19),
+          h('div', { class: 'grow' }, h('div', {}, 'From the makers of OwlEye Analytics'), h('div', { class: 'tiny muted' }, 'Privacy-first product analytics')),
+          icon('share', 16),
+        ),
+      ),
+      h('div', { class: 'tiny muted center', style: { marginTop: '14px' } }, 'SuperSplit 1.0, built by ', h('a', { href: 'https://shrinath.me', target: '_blank', rel: 'noopener' }, 'Shrinath Prabhu')),
     ],
   });
 }

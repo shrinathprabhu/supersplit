@@ -1,0 +1,78 @@
+# SuperSplit
+
+> A free bill splitting web app that runs entirely in the browser. Split group
+> expenses including taxes and fees, uneven payers, percentage and share
+> splits and bill round-off, then settle up and share a receipt. It works
+> fully offline, needs no account, and stores everything on the device.
+
+SuperSplit is at https://lowkey.tools/supersplit/ and is open source at
+https://github.com/shrinathprabhu/supersplit. It is built by Shrinath Prabhu
+(https://shrinath.me), from the makers of OwlEye Analytics
+(https://owleye.dev). Free, no accounts, no adverts, no tracking, no server.
+
+## What it does
+
+- **Groups.** One group per trip, flat or dinner. Add people by name; each
+  gets a generated avatar. Mark one person as yourself and every screen shows
+  your own position.
+- **Expenses.** Enter the amount before tax, then attach any number of taxes
+  and fees, each a percentage (GST 18%) or a flat amount (a 300 rupee service
+  charge). Negative amounts act as discounts and coupons. Each tax is spread
+  either by share, in proportion to what each person consumed, or equally for
+  flat per-head charges.
+- **Bill round-off.** Shops round the printed total, so 103.33 becomes 103 or
+  104. Choose nearest whole unit (the GST rule, where 50 paise and over rounds
+  up), always round up, or type the exact printed figure. The difference is
+  spread across the same split so the shares still add up to the printed
+  total.
+- **Who paid.** One person or several, splitting what they put in equally, by
+  exact amounts, or by percentage.
+- **How it splits.** Equally, by exact amounts, by percentage, or by shares
+  (1x, 2x, 0x), and anyone not involved can be deselected.
+- **Settle up.** Two views of the same balances. Actual debts means everyone
+  pays back whoever covered them, with debts inside a pair and circular debt
+  cancelled. Simplified debts re-routes the same balances into the fewest
+  possible payments. Both leave every person in the same position, and
+  settling in one view updates the other. Settlements can be partial and can
+  be undone.
+- **Sharing.** Any group summary or single debt can go out as WhatsApp ready
+  text, a PNG card, or a detailed PDF statement listing every expense, its
+  taxes, who paid and what each person owes.
+- **Insights.** Daily spend charts per group and across all groups, plus a
+  breakdown of which group the money goes to.
+- **Moving data.** Export a whole profile or a single group as JSON and import
+  it anywhere. Groups carry stable random ids, so re-importing merges rather
+  than duplicating, and conflicts or possible duplicates are shown for review
+  before anything is written.
+
+## How the money maths works
+
+Every amount is stored as an integer number of minor units (paise, cents) and
+split with largest-remainder allocation, so shares always add back up to the
+total exactly. A bill that does not divide evenly leaves one unit over, so the
+app keeps a rounding ledger per group and hands each leftover to whoever is
+furthest behind. Totals come out even whenever the arithmetic allows it, and
+nobody is ever more than one minor unit from their exact share.
+
+## How it compares
+
+It covers the same ground as Splitwise for splitting group expenses and
+settling up, including simplify debts, but runs entirely on device with no
+account, no item limits and no adverts. It does not handle payments, currency
+conversion, or syncing between people's phones; you share a receipt instead.
+One currency per group, chosen when the group is created.
+
+## Technical notes
+
+A plain ES module progressive web app: no framework, no build step, no runtime
+dependencies beyond a vendored copy of Apache ECharts for the charts. Data
+lives in IndexedDB, falling back to localStorage. A service worker precaches
+the app so it launches with no network. Content Security Policy is strict and
+the app makes no outbound requests of any kind.
+
+## Links
+
+- [App](https://lowkey.tools/supersplit/): the app itself
+- [Source](https://github.com/shrinathprabhu/supersplit): full source on GitHub
+- [Author](https://shrinath.me): Shrinath Prabhu
+- [OwlEye Analytics](https://owleye.dev): privacy-first product analytics, by the same maker

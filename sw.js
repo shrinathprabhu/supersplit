@@ -1,7 +1,7 @@
 // Offline-first service worker. The whole app is precached on install, so
 // after the first visit SuperSplit never needs the network again.
 
-const VERSION = 'supersplit-v10';
+const VERSION = 'supersplit-v11';
 const ASSETS = [
   './',
   './index.html',
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/' ||
     url.pathname.endsWith('/');
 
-  if (isAppCode && !url.pathname.startsWith('/vendor/')) {
+  if (isAppCode && !url.pathname.includes('/vendor/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {

@@ -11,7 +11,7 @@ let toaster = null;
 
 export function toast(message, kind = '') {
   if (!toaster) {
-    toaster = h('div', { class: 'toaster' });
+    toaster = h('div', { class: 'toaster', role: 'status', 'aria-live': 'polite' });
     document.body.appendChild(toaster);
   }
   const node = h('div', { class: 'toast' + (kind ? ' toast--' + kind : ''), text: message });

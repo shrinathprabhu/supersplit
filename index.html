@@ -3,10 +3,43 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
-    <title>SuperSplit, the offline bill splitter</title>
-    <meta name="description" content="Split bills with friends. Taxes, uneven payers, simplified debts, shareable receipts. Works offline, no account, nothing leaves your device." />
+
+    <title>SuperSplit: offline bill splitter with taxes and simplified debts</title>
+    <meta
+      name="description"
+      content="Free bill splitting app that works offline in your browser. Split expenses with friends including GST and service charges, uneven payers, percentage or share splits and bill round-off. See who owes whom, simplify debts, and share a receipt as text, image or PDF. No account, no server, nothing leaves your device."
+    />
+    <link rel="canonical" href="https://lowkey.tools/supersplit/" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="author" content="Shrinath Prabhu" />
+    <meta name="application-name" content="SuperSplit" />
+    <meta name="keywords" content="bill splitter, split expenses, splitwise alternative, offline expense splitter, GST bill split, group expenses, settle up, simplify debts, PWA" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SuperSplit" />
+    <meta property="og:title" content="SuperSplit: offline bill splitter with taxes and simplified debts" />
+    <meta
+      property="og:description"
+      content="Split bills with friends in your browser. Taxes, uneven payers, bill round-off, simplified debts and shareable receipts. Works offline, no account, nothing leaves your device."
+    />
+    <meta property="og:url" content="https://lowkey.tools/supersplit/" />
+    <meta property="og:image" content="https://lowkey.tools/supersplit/assets/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SuperSplit: split bills with friends. Works offline, no account, nothing uploaded." />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SuperSplit: offline bill splitter with taxes and simplified debts" />
+    <meta
+      name="twitter:description"
+      content="Split bills with friends in your browser. Taxes, uneven payers, simplified debts and shareable receipts. Works offline, no account."
+    />
+    <meta name="twitter:image" content="https://lowkey.tools/supersplit/assets/og-image.png" />
+
     <meta name="theme-color" content="#07060D" />
     <meta name="color-scheme" content="dark" />
+    <meta name="msapplication-TileColor" content="#07060D" />
 
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
@@ -20,21 +53,212 @@
 
     <link rel="preload" href="./assets/fonts/geist-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./css/app.css" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://lowkey.tools/supersplit/#app",
+            "name": "SuperSplit",
+            "alternateName": "SuperSplit bill splitter",
+            "url": "https://lowkey.tools/supersplit/",
+            "description": "A free bill splitting app that runs entirely in the browser. Split group expenses including taxes and fees, uneven payers, percentage and share splits and bill round-off, then settle up with actual or simplified debts and share a receipt as text, an image or a PDF. Works offline, needs no account, and stores everything on the device.",
+            "applicationCategory": "FinanceApplication",
+            "applicationSubCategory": "Expense splitting",
+            "operatingSystem": "Any modern web browser (iOS, Android, macOS, Windows, Linux)",
+            "browserRequirements": "Requires JavaScript and IndexedDB",
+            "softwareVersion": "1.0",
+            "inLanguage": "en",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "image": "https://lowkey.tools/supersplit/assets/og-image.png",
+            "screenshot": "https://lowkey.tools/supersplit/assets/og-image.png",
+            "license": "https://github.com/shrinathprabhu/supersplit",
+            "codeRepository": "https://github.com/shrinathprabhu/supersplit",
+            "sameAs": ["https://github.com/shrinathprabhu/supersplit"],
+            "featureList": [
+              "Split bills equally, by exact amounts, by percentage or by shares",
+              "Add any number of taxes and fees as a percentage or a flat amount",
+              "Spread each tax by share or equally, and handle discounts as negative amounts",
+              "Round the bill total to the nearest, up, or to the exact printed figure",
+              "Record several people paying one bill, equally or in different amounts",
+              "See who owes whom as actual debts or as simplified minimum transfers",
+              "Settle up in full or in part, and undo a settlement",
+              "Share a summary or a single receipt as WhatsApp text, a PNG or a detailed PDF",
+              "Daily spend charts per group and across all groups",
+              "Export and import a profile or a single group as JSON, with conflict and duplicate resolution",
+              "Works fully offline as an installable PWA",
+              "No account, no server, no tracking"
+            ],
+            "permissions": "none",
+            "storageRequirements": "About 1 MB of browser storage",
+            "author": {
+              "@type": "Person",
+              "name": "Shrinath Prabhu",
+              "url": "https://shrinath.me"
+            },
+            "creator": { "@id": "https://owleye.dev/#organization" },
+            "publisher": { "@id": "https://owleye.dev/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://owleye.dev/#organization",
+            "name": "OwlEye Analytics",
+            "url": "https://owleye.dev",
+            "description": "OwlEye Analytics builds privacy-first product analytics for the web.",
+            "sameAs": ["https://owleye.dev", "https://github.com/shrinathprabhu"],
+            "founder": { "@type": "Person", "name": "Shrinath Prabhu", "url": "https://shrinath.me" }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://lowkey.tools/supersplit/#website",
+            "url": "https://lowkey.tools/supersplit/",
+            "name": "SuperSplit",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://owleye.dev/#organization" }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://lowkey.tools/supersplit/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is SuperSplit free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. SuperSplit is completely free, has no accounts, no subscriptions and no adverts. It is open source on GitHub."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does SuperSplit work offline?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. It is a progressive web app that caches itself on first visit, so it keeps working with no connection at all. You can install it to your home screen and use it on a flight or abroad without data."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do I need an account to split bills?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. There is no sign up and no server. Every group, expense and settlement is stored in your own browser using IndexedDB, and nothing is ever uploaded."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does SuperSplit handle GST, service charge and other taxes?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "You enter the amount before tax, then attach as many taxes and fees as the bill has, each either a percentage or a flat amount. Each one is spread either by share, in proportion to what each person consumed, or equally for flat per-head charges. Negative amounts work as discounts and coupons."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can SuperSplit round off the bill like a restaurant does?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Turn on round off and choose nearest whole unit, which follows the GST rule where 50 paise and over rounds up, or always round up, or type the exact total printed on the bill. The difference is spread across the same split so the shares still add up to the printed total."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the difference between actual debts and simplified debts?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Actual debts means everyone pays back whoever covered them, with debts inside a pair and circular debt cancelled out. Simplified debts re-routes the same balances into the fewest possible payments, so there are fewer transfers but you may end up paying someone you never shared a bill with. Both views leave every person in exactly the same position, and settling in one updates the other."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I share who owes what?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Any group summary or single debt can be shared as WhatsApp ready text, a PNG card, or a detailed PDF statement listing every expense, its taxes, who paid and what each person owes. Each goes to the system share sheet or downloads."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I move my data to another browser or phone?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Export the whole profile or a single group as a JSON file and import it anywhere. Groups carry stable random ids, so re-importing a group you already have merges into it, showing you any conflicts or possible duplicates before anything is written."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is SuperSplit an alternative to Splitwise?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "It covers the same ground for splitting group expenses and settling up, including simplify debts, but it runs entirely on your device with no account, no limits and no adverts. It does not do payments, currency conversion or syncing between people, so you share a receipt instead."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="app">
-      <div class="screen">
-        <div class="content" style="padding-top: 22vh; text-align: center">
-          <div class="spinner" style="margin: 0 auto 14px"></div>
-          <div class="small muted">Opening SuperSplit…</div>
-        </div>
+      <div class="boot">
+        <svg class="boot__mark" viewBox="0 0 64 64" width="72" height="72" aria-hidden="true">
+          <defs>
+            <linearGradient id="bootg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#7C5CFF" />
+              <stop offset=".55" stop-color="#A855F7" />
+              <stop offset="1" stop-color="#FF5FA2" />
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="15" fill="url(#bootg)" />
+          <path
+            d="M19 10 H45 Q49 10 49 14 V46 L45.6 51.5 L42.2 46 L38.8 51.5 L35.4 46 L32 51.5 L28.6 46 L25.2 51.5 L21.8 46 L18.4 51.5 L15 46 L15 14 Q15 10 19 10 Z"
+            fill="#fff"
+          />
+          <rect x="20" y="15" width="24" height="8" rx="2.4" fill="#2A1B57" />
+          <rect x="34.5" y="17.5" width="8" height="3" rx="1.2" fill="#7C5CFF" />
+          <rect x="20" y="27" width="6" height="6" rx="1.8" fill="#B7ABDE" />
+          <rect x="29" y="27" width="6" height="6" rx="1.8" fill="#B7ABDE" />
+          <rect x="38" y="27" width="6" height="6" rx="1.8" fill="#B7ABDE" />
+          <rect x="20" y="36" width="6" height="6" rx="1.8" fill="#B7ABDE" />
+          <rect x="29" y="36" width="6" height="6" rx="1.8" fill="#B7ABDE" />
+          <rect x="38" y="36" width="6" height="6" rx="1.8" fill="#7C5CFF" />
+        </svg>
+        <h1 class="boot__name">SuperSplit</h1>
+        <p class="boot__tag">
+          Split bills with friends. Taxes, uneven payers, simplified debts and shareable receipts. Works offline, no
+          account, nothing leaves your device.
+        </p>
+        <div class="spinner boot__spin"></div>
       </div>
     </div>
 
     <noscript>
-      <div style="padding: 32px; text-align: center">
-        <h1>SuperSplit</h1>
-        <p>This app needs JavaScript. Everything runs locally in your browser and nothing is sent anywhere.</p>
+      <div class="noscript">
+        <h2>SuperSplit needs JavaScript</h2>
+        <p>
+          Everything runs locally in your browser and nothing is sent anywhere, but that does mean the app itself is
+          JavaScript. Turn it on to use SuperSplit.
+        </p>
+        <h3>What SuperSplit does</h3>
+        <ul>
+          <li>Split a bill equally, by exact amounts, by percentage or by shares, and leave anyone out who was not in on it.</li>
+          <li>Add GST, service charge or any other tax and fee, as a percentage or a flat amount, spread by share or equally. Negative amounts act as discounts.</li>
+          <li>Round the total the way the shop did: nearest whole unit, always up, or the exact figure printed on the bill.</li>
+          <li>Record several people paying one bill, equally or in different amounts.</li>
+          <li>See who owes whom as actual debts, or simplified into the fewest possible payments, and settle up in full or in part.</li>
+          <li>Share a summary or a single receipt as WhatsApp text, a PNG or a detailed PDF.</li>
+          <li>Chart daily spend for a group and across every group.</li>
+          <li>Export and import a profile or a single group as JSON, with conflicts and duplicates shown before anything is written.</li>
+        </ul>
+        <p>
+          It is a free, open source progressive web app with no account, no server and no tracking.
+          <a href="https://github.com/shrinathprabhu/supersplit">Source on GitHub</a>. Built by
+          <a href="https://shrinath.me">Shrinath Prabhu</a>, from the makers of
+          <a href="https://owleye.dev">OwlEye Analytics</a>.
+        </p>
       </div>
     </noscript>
 

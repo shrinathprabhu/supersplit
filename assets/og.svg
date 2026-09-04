@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+<defs>
+<linearGradient id="pl" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#7C5CFF"/><stop offset=".55" stop-color="#A855F7"/><stop offset="1" stop-color="#FF5FA2"/>
+</linearGradient>
+<radialGradient id="glow1" cx="0.12" cy="0" r="0.9">
+<stop offset="0" stop-color="#7C5CFF" stop-opacity="0.36"/><stop offset="1" stop-color="#7C5CFF" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="glow2" cx="1" cy="0.05" r="0.8">
+<stop offset="0" stop-color="#FF5FA2" stop-opacity="0.24"/><stop offset="1" stop-color="#FF5FA2" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="tg" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9B8FF"/>
+</linearGradient>
+</defs>
+<rect width="1200" height="1200" fill="#07060D"/>
+<g transform="translate(0 285)">
+<rect width="1200" height="630" fill="#07060D"/>
+<rect width="1200" height="630" fill="url(#glow1)"/>
+<rect width="1200" height="630" fill="url(#glow2)"/>
+<g transform="translate(84 74) scale(1.8)"><rect width="64" height="64" rx="15" fill="url(#pl)"/><path d="M19 10 H45 Q49 10 49 14 V46 L45.6 51.5 L42.2 46 L38.8 51.5 L35.4 46 L32 51.5 L28.6 46 L25.2 51.5 L21.8 46 L18.4 51.5 L15 46 L15 14 Q15 10 19 10 Z" fill="#FFFFFF"/><rect x="20" y="15" width="24" height="8" rx="2.4" fill="#2A1B57"/><rect x="34.5" y="17.5" width="8" height="3" rx="1.2" fill="#7C5CFF"/><rect x="20" y="27" width="6" height="6" rx="1.8" fill="#B7ABDE"/><rect x="29" y="27" width="6" height="6" rx="1.8" fill="#B7ABDE"/><rect x="38" y="27" width="6" height="6" rx="1.8" fill="#B7ABDE"/><rect x="20" y="36" width="6" height="6" rx="1.8" fill="#B7ABDE"/><rect x="29" y="36" width="6" height="6" rx="1.8" fill="#B7ABDE"/><rect x="38" y="36" width="6" height="6" rx="1.8" fill="#7C5CFF"/></g>
+<text x="84" y="300" font-family="Geist, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="-3.5" fill="url(#tg)">SuperSplit</text>
+<text x="84" y="366" font-family="Geist, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#B3ACCF">Split bills with friends. Taxes, uneven payers,</text>
+<text x="84" y="412" font-family="Geist, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#B3ACCF">simplified debts and shareable receipts.</text>
+<g font-family="Geist, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="24" font-weight="600">
+<rect x="84" y="458" width="212" height="52" rx="26" fill="#171233" stroke="#4B3A9E"/>
+<text x="190" y="491" fill="#C9B8FF" text-anchor="middle">Works offline</text>
+<rect x="312" y="458" width="192" height="52" rx="26" fill="#0E2E24" stroke="#2C7A5C"/>
+<text x="408" y="491" fill="#3DE0A0" text-anchor="middle">No account</text>
+<rect x="520" y="458" width="232" height="52" rx="26" fill="#191727" stroke="#3A3652"/>
+<text x="636" y="491" fill="#B3ACCF" text-anchor="middle">Nothing uploaded</text>
+</g>
+<text x="1116" y="556" font-family="Geist, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" fill="#6F6890" text-anchor="end">from the makers of OwlEye Analytics</text>
+</g>
+</svg>
