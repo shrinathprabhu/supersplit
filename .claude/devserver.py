@@ -25,6 +25,12 @@ SECURITY = {
 }
 
 
+# index.html points at /supersplit/... absolutely, which is how the app is
+# served in production. Mirroring that prefix here means local dev exercises
+# the same URLs rather than a layout that only exists on this machine.
+BASE = '/supersplit'
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     extensions_map = {
         **http.server.SimpleHTTPRequestHandler.extensions_map,
@@ -34,6 +40,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         '.svg': 'image/svg+xml',
         '.woff2': 'font/woff2',
     }
+
+    def send_head(self):
+        path = self.path.split('?', 1)[0]
+        if path == BASE:
+            self.send_response(308)
+            self.send_header('Location', BASE + '/')
+            self.end_headers()
+            return None
+        if path.startswith(BASE + '/'):
+            self.path = self.path[len(BASE):] or '/'
+        return super().send_head()
 
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, must-revalidate')

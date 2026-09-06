@@ -13,7 +13,8 @@ dependencies. Serve the folder and it runs.
 python3 .claude/devserver.py 5173
 ```
 
-Then open <http://localhost:5173>. Any static server works (`npx serve`,
+Then open <http://localhost:5173/supersplit/>. The dev server mirrors the
+production path prefix, so local URLs match the deployed ones. Any static server works (`npx serve`,
 `python3 -m http.server`, Netlify, GitHub Pages, an S3 bucket); the bundled dev
 server just adds no-cache headers so edits show up immediately.
 
@@ -35,6 +36,25 @@ and fees:
 - a percentage (GST 18%) or a flat amount (₹300 service charge)
 - each one is spread either **by share**, in proportion to what each person
   actually consumed, or **equally**, for flat per-head fees like a cover charge
+
+**Discounts.** A bill that shows the full amount with the money off written
+underneath is its own thing, not a negative tax, so it gets its own section.
+Each discount is a percentage or a flat amount, and two choices make it match
+the bill:
+
+- **Before tax or after tax.** Before tax comes off first and the tax is then
+  worked out on the lower amount, which is what happens when a dish is
+  discounted. After tax comes off the final total, which is what a coupon
+  does.
+- **Who it applies to.** Everyone by default, or name the people it belongs
+  to. A percentage is a percentage of what those people are actually on the
+  hook for, not of the whole bill, so "20% off my dish" comes off that dish.
+  Where it covers more than one person you can spread it by share or equally.
+
+Discount one person's dish before tax and their tax drops with it while
+everyone else's stays put. Discounts stack, and a discount larger than the
+amount it comes off is refused rather than quietly turning into a negative
+share.
 
 **Round off.** Shops round the printed total, so ₹103.33 becomes ₹103 or ₹104.
 Tick *Round off the bill* and choose **Nearest** (the GST rule: 50 paise and
@@ -109,7 +129,7 @@ every total is printed on the page as well.
 | --- | --- |
 | Text | WhatsApp-ready summary of who owes whom |
 | Image | PNG card, same summary, receipt styling |
-| PDF | Full statement: every expense, its taxes, who paid, what each person owes, balances and settlements |
+| PDF | Full statement: every expense, its taxes and discounts, who paid, what each person owes, balances and settlements |
 
 Each one can go to the OS share sheet (`navigator.share`) or be saved to your
 downloads. Where the share sheet is not available, text is copied to the
@@ -222,20 +242,34 @@ use something else, mirror these.
 
 ### Serving it under a path
 
-Every URL in the app is relative, so it runs from any path without changes,
-but it has to be reached *with* a trailing slash. At `/supersplit` the browser
-resolves `./js/app.js` against the parent directory and the app never loads;
-at `/supersplit/` everything resolves correctly. Verified both ways in a
-browser.
+`index.html` points at `/supersplit/css/app.css`, `/supersplit/js/app.js` and
+so on, and the service worker registers `/supersplit/sw.js` with scope
+`/supersplit/`. Absolute paths mean the app does not care whether it is
+reached with a trailing slash, but they do fix it to one path.
 
-If a parent site proxies this app onto a path, for example
+The public URL is `https://lowkey.tools/supersplit/`, where the parent site
+proxies to this project and strips the prefix on the way:
 
 ```json
-{ "source": "/supersplit/:path*", "destination": "https://supersplit.example.com/:path*" }
+{ "source": "/supersplit", "destination": "https://supersplit.lowkey.tools" },
+{ "source": "/supersplit/:path*", "destination": "https://supersplit.lowkey.tools/:path*" }
 ```
 
-then the parent site also needs the redirect that adds the slash, because only
-it can change its own URL:
+Because the prefix is stripped, the origin never sees `/supersplit`, so anyone
+reaching `supersplit.lowkey.tools` directly would follow the absolute paths
+into a 404. This project's own `vercel.json` maps the prefix back onto the
+root to cover that:
+
+```json
+"rewrites": [{ "source": "/supersplit/:path*", "destination": "/:path*" }]
+```
+
+`.claude/devserver.py` does the same thing, and redirects `/supersplit` to
+`/supersplit/`, so local development runs on the same URLs as production.
+Browse to <http://localhost:5173/supersplit/>.
+
+**The parent site should still add the trailing-slash redirect**, even though
+assets no longer depend on it:
 
 ```json
 "redirects": [
@@ -243,21 +277,20 @@ it can change its own URL:
 ]
 ```
 
-Vercel applies redirects before rewrites, so this runs first. This project
-deliberately leaves `trailingSlash` off: behind a path rewrite, an origin-side
-slash redirect would send a `Location` that resolves against the parent domain
-and drop the path prefix.
+A service worker only controls pages at or below its scope, and `/supersplit`
+sits just outside `/supersplit/`. Without the redirect the app still loads at
+the bare path, but it will not work offline there.
 
 Two more things follow from being proxied onto a path:
 
 - **`robots.txt`, `sitemap.xml` and `llms.txt` here only count for this
   project's own domain.** Crawlers read them from the root of whatever host
-  they are on, so the parent site needs its own root `robots.txt` listing
-  `Sitemap: https://parent.example.com/supersplit/sitemap.xml`, and its own
-  root `llms.txt`.
+  they are on, so lowkey.tools needs its own root `robots.txt` listing
+  `Sitemap: https://lowkey.tools/supersplit/sitemap.xml`, and its own root
+  `llms.txt`.
 - **The two hosts are different origins, so they hold different data.** A
-  group created on `parent.example.com/supersplit/` is not visible on
-  `supersplit.example.com`. Publish and link one of them; the canonical tag
+  group created on `lowkey.tools/supersplit/` is not visible on
+  `supersplit.lowkey.tools`. Publish and link one of them; the canonical tag
   already points at the path version.
 
 **Caching.** The font and the vendored library never change, so they get a year

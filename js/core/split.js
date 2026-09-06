@@ -55,6 +55,10 @@ export function blankExpense(groupId, memberIds = []) {
     updatedAt: now.toISOString(),
     subtotal: 0,
     taxes: [],
+    // Money off the bill. `stage` decides whether it comes off before tax is
+    // worked out or off the final total, and `members` limits it to the
+    // people it actually applies to.
+    discounts: [],
     // Shops round the printed total (₹103.33 -> ₹103 or ₹104). `mode` picks
     // how; `total` holds the exact printed figure when mode is 'exact'.
     roundOff: { enabled: false, mode: 'nearest', total: null },
@@ -71,6 +75,18 @@ export function newTax(label = 'Tax') {
     kind: 'percent', // 'percent' of the pre-tax amount, or a flat 'amount'
     value: 0,
     mode: 'proportional', // or 'equal'. How the tax is spread over people
+  };
+}
+
+export function newDiscount(label = 'Discount') {
+  return {
+    id: crypto.randomUUID(),
+    label,
+    kind: 'percent', // 'percent' of what it applies to, or a flat 'amount'
+    value: 0,
+    stage: 'pre', // 'pre' comes off before tax, 'post' off the final total
+    mode: 'proportional', // or 'equal', how it is shared out
+    members: [], // empty means everyone in the split
   };
 }
 
@@ -201,21 +217,108 @@ export function resolvePayers(expense, total, carry) {
  * share by default, so taxes land on whoever actually ordered the expensive
  * thing, or equally when the tax is a flat per-head fee.
  */
-export function resolveSplit(expense, taxes, carry) {
+/** Who a discount applies to, in group order. Empty means everyone. */
+function discountTargets(discount, members) {
+  const wanted = discount.members || [];
+  if (!wanted.length) return [...members];
+  const set = new Set(wanted);
+  return members.filter((id) => set.has(id));
+}
+
+/**
+ * Take one round of discounts off whatever each person currently owes.
+ *
+ * A percentage is a percentage of what the discount actually applies to: the
+ * combined amount owed by the people named on it, not the whole bill. So
+ * "20% off my dish" comes off that dish, and a discount for everyone comes
+ * off everything.
+ */
+function applyDiscounts(discounts, stage, ctx) {
+  const detail = [];
+  let total = 0;
+
+  for (const discount of discounts) {
+    if ((discount.stage || 'pre') !== stage) continue;
+    const targets = discountTargets(discount, ctx.members);
+    if (!targets.length) continue;
+
+    const base = targets.reduce((a, id) => a + Math.max(0, ctx.remaining[id] || 0), 0);
+    const amount =
+      discount.kind === 'percent'
+        ? roundHalfUp((base * (Number(discount.value) || 0)) / 100)
+        : Math.trunc(Number(discount.value) || 0);
+
+    const per = {};
+    if (amount !== 0) {
+      const weights = targets.map((id) => Math.max(0, ctx.remaining[id] || 0));
+      const spread = discount.mode === 'equal' || !weights.some((w) => w > 0);
+      const out = spread
+        ? allocateEqualFair(amount, targets.length, ctx.ledger(targets))
+        : allocateFair(amount, weights, ctx.ledger(targets));
+      // Money off means owing less, so the fairness ledger moves the other
+      // way from a tax.
+      ctx.settle(targets, out.drift.map((d) => -d));
+      targets.forEach((id, i) => {
+        per[id] = out.parts[i];
+        ctx.remaining[id] -= out.parts[i];
+      });
+    } else {
+      for (const id of targets) per[id] = 0;
+    }
+
+    detail.push({
+      discountId: discount.id,
+      label: discount.label,
+      stage,
+      kind: discount.kind,
+      value: discount.value,
+      mode: discount.mode,
+      amount,
+      base,
+      per,
+      members: targets,
+      everyone: !(discount.members || []).length,
+    });
+    total += amount;
+  }
+
+  return { detail, total };
+}
+
+/**
+ * Who consumed what. Splits the pre-tax amount by the chosen rule, takes off
+ * any before-tax discounts, spreads every tax over what is left, then takes
+ * off any after-tax discounts.
+ */
+export function resolveSplit(expense, carry) {
   const { mode, members, values } = expense.split;
   const errors = [];
-  // Pre-tax share, every tax and the round-off all land on one ledger,
+  // Pre-tax share, discounts, tax and the round-off all land on one ledger,
   // because what a person owes is the sum of them.
   const share = () => carry.vector('owed', members);
   const keep = (drift) => carry.settle('owed', members, drift);
   const preTax = {};
   const taxByMember = {};
+  const discountByMember = {};
   const taxDetail = [];
   const owed = {};
 
+  const empty = {
+    preTax,
+    taxByMember,
+    discountByMember,
+    taxDetail,
+    discountDetail: [],
+    discountTotals: { pre: 0, post: 0 },
+    taxes: taxAmounts(0, expense.taxes),
+    taxTotal: 0,
+    taxableTotal: 0,
+    owed,
+    errors,
+  };
   if (!members.length) {
     errors.push({ field: 'split', code: 'empty', message: 'Pick at least one person to split between.' });
-    return { preTax, taxByMember, taxDetail, owed, errors };
+    return empty;
   }
 
   let parts;
@@ -269,45 +372,90 @@ export function resolveSplit(expense, taxes, carry) {
     }
   }
 
+  const remaining = {};
   members.forEach((id, i) => {
     preTax[id] = parts[i];
     taxByMember[id] = 0;
-    owed[id] = parts[i];
+    discountByMember[id] = 0;
+    remaining[id] = parts[i];
   });
 
-  const preWeights = members.map((id) => preTax[id]);
+  const ctx = {
+    members,
+    remaining,
+    ledger: (ids) => carry.vector('owed', ids),
+    settle: (ids, drift) => carry.settle('owed', ids, drift),
+  };
+
+  const discounts = expense.discounts || [];
+  const before = applyDiscounts(discounts, 'pre', ctx);
+  for (const line of before.detail) {
+    for (const [id, amount] of Object.entries(line.per)) discountByMember[id] += amount;
+  }
+
+  // Tax is worked out on what is left after the before-tax discounts, which
+  // is what a bill does, and it follows the discounted amounts too.
+  const taxableTotal = members.reduce((a, id) => a + remaining[id], 0);
+  const taxes = taxAmounts(taxableTotal, expense.taxes);
+  const taxableWeights = members.map((id) => remaining[id]);
+
   for (const tax of taxes) {
     let out;
     if (tax.mode === 'equal') {
       out = allocateEqualFair(tax.amount, members.length, share());
     } else {
-      const pos = positive(preWeights);
+      const pos = positive(taxableWeights);
       out = pos ? allocateFair(tax.amount, pos, share()) : allocateEqualFair(tax.amount, members.length, share());
     }
     keep(out.drift);
-    const shares = out.parts;
     const per = {};
     members.forEach((id, i) => {
-      per[id] = shares[i];
-      taxByMember[id] += shares[i];
-      owed[id] += shares[i];
+      per[id] = out.parts[i];
+      taxByMember[id] += out.parts[i];
+      remaining[id] += out.parts[i];
     });
     taxDetail.push({ taxId: tax.id, label: tax.label, amount: tax.amount, per });
   }
 
-  return { preTax, taxByMember, taxDetail, owed, errors };
+  const after = applyDiscounts(discounts, 'post', ctx);
+  for (const line of after.detail) {
+    for (const [id, amount] of Object.entries(line.per)) discountByMember[id] += amount;
+  }
+
+  for (const id of members) owed[id] = remaining[id];
+
+  if (members.some((id) => owed[id] < 0)) {
+    errors.push({
+      field: 'discounts',
+      code: 'over',
+      message: 'A discount is bigger than the amount it comes off.',
+    });
+  }
+
+  return {
+    preTax,
+    taxByMember,
+    discountByMember,
+    taxDetail,
+    discountDetail: [...before.detail, ...after.detail],
+    discountTotals: { pre: before.total, post: after.total },
+    taxes,
+    taxTotal: taxes.reduce((a, t) => a + t.amount, 0),
+    taxableTotal,
+    owed,
+    errors,
+  };
 }
 
 /** Everything the UI and the exporters need about a single expense. */
 export function computeExpense(expense, code = 'INR', carry = makeCarry()) {
-  const taxes = taxAmounts(expense.subtotal, expense.taxes);
-  const taxTotal = taxes.reduce((a, t) => a + t.amount, 0);
-  const rawTotal = expense.subtotal + taxTotal;
+  // The split has to come first now: before-tax discounts change what is
+  // taxable, and the taxes change the total the payers have to match.
+  const split = resolveSplit(expense, carry);
+  const rawTotal =
+    expense.subtotal - split.discountTotals.pre + split.taxTotal - split.discountTotals.post;
   const rounding = resolveRounding(expense, rawTotal, code);
   const total = rounding.target;
-
-  const { byMember: paid, errors: payerErrors } = resolvePayers(expense, total, carry);
-  const split = resolveSplit(expense, taxes, carry);
 
   // The round-off rides along with everyone's share of the bill.
   const roundPer = {};
@@ -319,12 +467,13 @@ export function computeExpense(expense, code = 'INR', carry = makeCarry()) {
       ? allocateFair(rounding.amount, weights, carry.vector('owed', ids))
       : allocateEqualFair(rounding.amount, ids.length, carry.vector('owed', ids));
     carry.settle('owed', ids, out.drift);
-    const parts = out.parts;
     ids.forEach((id, i) => {
-      roundPer[id] = parts[i];
-      split.owed[id] += parts[i];
+      roundPer[id] = out.parts[i];
+      split.owed[id] += out.parts[i];
     });
   }
+
+  const { byMember: paid, errors: payerErrors } = resolvePayers(expense, total, carry);
 
   const errors = [...payerErrors, ...split.errors];
   if (total === 0) {
@@ -333,14 +482,19 @@ export function computeExpense(expense, code = 'INR', carry = makeCarry()) {
   return {
     id: expense.id,
     subtotal: expense.subtotal,
-    taxes,
-    taxTotal,
+    taxes: split.taxes,
+    taxTotal: split.taxTotal,
+    taxableTotal: split.taxableTotal,
+    discounts: split.discountDetail,
+    discountTotals: split.discountTotals,
+    discountTotal: split.discountTotals.pre + split.discountTotals.post,
     rawTotal,
     rounding: { ...rounding, per: roundPer },
     total,
     paid,
     preTax: split.preTax,
     taxByMember: split.taxByMember,
+    discountByMember: split.discountByMember,
     taxDetail: split.taxDetail,
     owed: split.owed,
     members: expense.split.members,
@@ -349,4 +503,3 @@ export function computeExpense(expense, code = 'INR', carry = makeCarry()) {
     valid: errors.length === 0,
   };
 }
-

@@ -62,6 +62,11 @@ function fullText(doc) {
   lines.push('*Expenses*');
   for (const e of doc.expenses) {
     lines.push(`• ${e.description} (${fmtDate(e.date)}): ${fmt(e.total, c)}`);
+    if (e.discounts?.length) {
+      lines.push(
+        `   ${e.discounts.map((d) => `${d.label} -${fmt(d.amount, c)}${d.everyone ? '' : ' for ' + d.names.join(' and ')}`).join(', ')}`,
+      );
+    }
     lines.push(`   paid by ${e.paidBy.map((p) => `${p.member.name} ${fmt(p.amount, c)}`).join(', ')}`);
     lines.push(`   each owes ${e.shares.map((s) => `${s.member.name} ${fmt(s.amount, c)}`).join(', ')}`);
   }

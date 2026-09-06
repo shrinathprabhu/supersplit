@@ -245,9 +245,23 @@ function expenseRow(group, ledger, expense, rerender) {
   );
 }
 
-/** Tax + round-off carried by one person on one expense. */
+/** Tax, discounts and round-off carried by one person on one expense. */
 function extraFor(c, id) {
-  return (c.taxByMember[id] || 0) + (c.rounding?.per?.[id] || 0);
+  return (c.taxByMember[id] || 0) - (c.discountByMember?.[id] || 0) + (c.rounding?.per?.[id] || 0);
+}
+
+/** One money-off line in the expense breakdown. */
+function discountRow(d, code, group) {
+  const who = d.everyone
+    ? 'everyone'
+    : listNames(d.members.map((id) => group.members.find((m) => m.id === id)?.name).filter(Boolean), 2);
+  const rate = d.kind === 'percent' ? ` (${d.value}%)` : '';
+  return h(
+    'div',
+    { class: 'breakdown__row' },
+    h('span', { text: `${d.label || 'Discount'}${rate} · ${who}` }),
+    h('span', { class: 'num good', text: '-' + fmt(d.amount, code) }),
+  );
 }
 
 function openExpenseDetail(group, ledger, expense, rerender) {
@@ -271,9 +285,15 @@ function openExpenseDetail(group, ledger, expense, rerender) {
         'div',
         { class: 'card' },
         row('Amount before tax', fmt(c.subtotal, code)),
+        ...(c.discounts || [])
+          .filter((d) => d.stage === 'pre')
+          .map((d) => discountRow(d, code, group)),
         ...c.taxes.map((t) =>
           row(`${t.label || 'Tax'}${t.kind === 'percent' ? ` (${t.value}%)` : ''} · ${t.mode === 'equal' ? 'split equally' : 'shared by split'}`, fmt(t.amount, code)),
         ),
+        ...(c.discounts || [])
+          .filter((d) => d.stage === 'post')
+          .map((d) => discountRow(d, code, group)),
         c.rounding?.amount ? row('Round off', (c.rounding.amount < 0 ? '−' : '+') + fmt(Math.abs(c.rounding.amount), code)) : null,
         row('Total', fmt(c.total, code), { total: true }),
       ),
@@ -309,7 +329,7 @@ function openExpenseDetail(group, ledger, expense, rerender) {
               extraFor(c, id)
                 ? h('div', {
                     class: 'tiny muted',
-                    text: `${fmt(c.preTax[id], code)} ${extraFor(c, id) < 0 ? '−' : '+'} ${fmt(Math.abs(extraFor(c, id)), code)} tax & fees`,
+                    text: `${fmt(c.preTax[id], code)} ${extraFor(c, id) < 0 ? '-' : '+'} ${fmt(Math.abs(extraFor(c, id)), code)} tax & discounts`,
                   })
                 : null,
             ),

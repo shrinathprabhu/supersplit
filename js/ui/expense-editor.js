@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 import { openSheet, toast, confirmSheet } from './shell.js';
 import { avatarNode, moneyInput, numberInput, segmented, checkbox } from './components.js';
 import { getGroup, saveExpense, deleteExpense, getExpense, carryBefore } from '../core/store.js';
-import { blankExpense, newTax, computeExpense, makeCarry, roundTarget, toDateKey } from '../core/split.js';
+import { blankExpense, newTax, newDiscount, computeExpense, makeCarry, roundTarget, toDateKey } from '../core/split.js';
 import { fmt, allocate, currency as curInfo } from '../core/money.js';
 import { findLookalikes } from '../core/transfer.js';
 
@@ -20,6 +20,10 @@ const SPLIT_MODES = [
   { value: 'amount', label: 'Amounts' },
   { value: 'percent', label: 'Percent' },
   { value: 'shares', label: 'Shares' },
+];
+const DISCOUNT_STAGE = [
+  { value: 'pre', label: 'Before tax' },
+  { value: 'post', label: 'After tax' },
 ];
 const TAX_SPREAD = [
   { value: 'proportional', label: 'By share' },
@@ -47,6 +51,7 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
 
   function normalise(expense) {
     // Expenses saved before round-off existed, or before it had modes.
+    if (!expense.discounts) expense.discounts = [];
     const ro = expense.roundOff;
     if (!ro) expense.roundOff = { enabled: false, mode: 'nearest', total: null };
     else if (!ro.mode) ro.mode = ro.total === null || ro.total === undefined ? 'nearest' : 'exact';
@@ -79,7 +84,7 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
       list.push('Every split value must be greater than zero. Deselect anyone not included.');
     }
     for (const err of computed.errors) {
-      if (err.code === 'sum') list.push(err.message);
+      if (err.code === 'sum' || err.code === 'over') list.push(err.message);
     }
     return list;
   }
@@ -96,13 +101,18 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
 
     nodes.total.textContent = fmt(computed.total, code);
     const bits = [];
-    if (computed.taxTotal) bits.push(`${fmt(draft.subtotal, code)} + ${fmt(computed.taxTotal, code)} tax & fees`);
+    if (computed.discountTotal) bits.push(`${fmt(computed.discountTotal, code)} off`);
+    if (computed.taxTotal) bits.push(`${fmt(computed.taxableTotal, code)} + ${fmt(computed.taxTotal, code)} tax & fees`);
     if (computed.rounding.amount) bits.push(`round off ${signed(computed.rounding.amount, code)}`);
     nodes.totalHint.textContent = bits.length ? bits.join(' · ') : 'No taxes added';
 
     for (const [id, node] of Object.entries(nodes.taxAmounts || {})) {
       const tax = computed.taxes.find((t) => t.id === id);
       if (tax) node.textContent = fmt(tax.amount, code);
+    }
+    for (const [id, node] of Object.entries(nodes.discountAmounts || {})) {
+      const line = computed.discounts.find((d) => d.discountId === id);
+      node.textContent = line ? '-' + fmt(line.amount, code) : '--';
     }
     if (nodes.roundHint) {
       const sym = curInfo(code).symbol.trim();
@@ -154,8 +164,9 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
       // The split itself is on the pre-tax amount; tax and rounding are shown
       // separately so the numbers match what the user typed.
       row.value.textContent = fmt(computed.preTax[id] || 0, code);
-      const extra = (computed.taxByMember[id] || 0) + (computed.rounding.per?.[id] || 0);
-      if (row.sub) row.sub.textContent = extra ? `${signed(extra, code)} tax` : '';
+      const extra =
+        (computed.taxByMember[id] || 0) - (computed.discountByMember[id] || 0) + (computed.rounding.per?.[id] || 0);
+      if (row.sub) row.sub.textContent = extra ? `${signed(extra, code)} tax & discounts` : '';
     }
     if (!nodes.splitHint) return;
     const error = computed.errors.find((e) => e.field === 'split' && e.code === 'sum');
@@ -310,6 +321,217 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
           },
           icon('plus', 15),
           'Add tax or fee',
+        ),
+      ),
+    );
+  }
+
+  function discountsSection() {
+    const list = h('div', {});
+    nodes.discountAmounts = {};
+
+    const render = () => {
+      clear(list);
+      nodes.discountAmounts = {};
+
+      draft.discounts.forEach((discount) => {
+        const amountNode = h('b', { class: 'num good', text: '--' });
+        nodes.discountAmounts[discount.id] = amountNode;
+
+        const valueHolder = h('div', { class: 'grow' });
+        const renderValue = () => {
+          replace(
+            valueHolder,
+            discount.kind === 'percent'
+              ? numberInput({
+                  value: discount.value,
+                  suffix: '%',
+                  onChange: (v) => {
+                    discount.value = v ?? 0;
+                    recompute();
+                  },
+                })
+              : moneyInput({
+                  currency: code,
+                  value: discount.value,
+                  size: 'sm',
+                  onChange: (v) => {
+                    discount.value = v ?? 0;
+                    recompute();
+                  },
+                }),
+          );
+        };
+        renderValue();
+
+        const everyone = !discount.members.length;
+        const applied = everyone ? group.members.map((m) => m.id) : discount.members;
+
+        const card = h(
+          'div',
+          { class: 'tax-card' },
+          h(
+            'div',
+            { class: 'row', style: { gap: '8px' } },
+            h('input', {
+              class: 'input grow',
+              style: { padding: '0.55em 0.7em', borderRadius: '10px' },
+              value: discount.label,
+              placeholder: 'Discount',
+              onInput: (e) => {
+                discount.label = e.target.value;
+              },
+            }),
+            h(
+              'button',
+              {
+                class: 'btn btn--icon',
+                'aria-label': 'Remove this discount',
+                onClick: () => {
+                  draft.discounts = draft.discounts.filter((d) => d.id !== discount.id);
+                  render();
+                  recompute();
+                },
+              },
+              icon('trash', 17),
+            ),
+          ),
+          h(
+            'div',
+            { class: 'row', style: { marginTop: '8px', gap: '8px' } },
+            segmented(
+              [
+                { value: 'percent', label: '%' },
+                { value: 'amount', label: curInfo(code).symbol.trim() },
+              ],
+              discount.kind,
+              (v) => {
+                discount.kind = v;
+                discount.value = 0;
+                render();
+                recompute();
+              },
+              { small: true },
+            ),
+            valueHolder,
+          ),
+          h(
+            'div',
+            { class: 'row row--between', style: { marginTop: '8px' } },
+            segmented(
+              DISCOUNT_STAGE,
+              discount.stage,
+              (v) => {
+                discount.stage = v;
+                render();
+                recompute();
+              },
+              { small: true },
+            ),
+            h('div', { class: 'small', style: { flex: 'none', paddingLeft: '10px' } }, amountNode),
+          ),
+          h('div', {
+            class: 'tiny muted',
+            style: { marginTop: '6px' },
+            text:
+              discount.stage === 'pre'
+                ? 'Comes off before tax, so tax is worked out on the lower amount.'
+                : 'Comes off the final total, after tax has been added.',
+          }),
+          h('div', { class: 'field__label', style: { margin: '12px 0 6px' }, text: 'Applies to' }),
+          h(
+            'div',
+            { class: 'row row--wrap', style: { gap: '6px' } },
+            h(
+              'button',
+              {
+                class: 'chip chip--plain',
+                'aria-pressed': String(everyone),
+                onClick: () => {
+                  discount.members = [];
+                  render();
+                  recompute();
+                },
+              },
+              'Everyone',
+            ),
+            group.members.map((m) => {
+              const on = !everyone && discount.members.includes(m.id);
+              return h(
+                'button',
+                {
+                  class: 'chip',
+                  'aria-pressed': String(on),
+                  onClick: () => {
+                    const current = everyone ? [] : [...discount.members];
+                    const next = current.includes(m.id) ? current.filter((id) => id !== m.id) : [...current, m.id];
+                    // Naming everybody is the same as naming nobody.
+                    discount.members =
+                      next.length === group.members.length ? [] : group.members.filter((x) => next.includes(x.id)).map((x) => x.id);
+                    render();
+                    recompute();
+                  },
+                },
+                avatarNode(m, 22),
+                m.name,
+              );
+            }),
+          ),
+        );
+
+        if (applied.length > 1) {
+          card.appendChild(
+            h(
+              'div',
+              { style: { marginTop: '10px' } },
+              segmented(
+                TAX_SPREAD,
+                discount.mode,
+                (v) => {
+                  discount.mode = v;
+                  render();
+                  recompute();
+                },
+                { small: true },
+              ),
+            ),
+          );
+          card.appendChild(
+            h('div', {
+              class: 'tiny muted',
+              style: { marginTop: '6px' },
+              text:
+                discount.mode === 'equal'
+                  ? 'Split equally: the same amount off for each of them.'
+                  : 'By share: more off for whoever ordered more.',
+            }),
+          );
+        }
+
+        list.appendChild(card);
+      });
+    };
+    render();
+
+    return h(
+      'div',
+      { class: 'stack stack--sm' },
+      list,
+      h(
+        'div',
+        { class: 'row' },
+        h(
+          'button',
+          {
+            class: 'btn btn--quiet btn--sm',
+            onClick: () => {
+              draft.discounts.push(newDiscount());
+              render();
+              recompute();
+            },
+          },
+          icon('plus', 15),
+          'Add discount',
         ),
       ),
     );
@@ -670,6 +892,10 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
 
         h('div', { class: 'section-title', text: 'Taxes & fees' }),
         taxesSection(),
+
+        h('div', { class: 'section-title', text: 'Discounts' }),
+        discountsSection(),
+
         roundOffSection(),
 
         h(

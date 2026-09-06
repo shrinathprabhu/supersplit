@@ -314,14 +314,26 @@ export function noteBlock(message, w, kind = 'info') {
 
 /** One expense, stated plainly: what it cost, who paid, what each owes. */
 export function expenseBlock(expense, doc, w) {
+  const discounts = expense.discounts || [];
+  const before = discounts.filter((d) => d.stage === 'pre');
+  const after = discounts.filter((d) => d.stage === 'post');
+  // Not called `money`: that name is the canvas helper that draws right
+  // aligned text, and shadowing it silently blanks every amount below.
+  const cash = (n) => fmt(n, doc.currency);
+  const label = (d) => `${d.label}${d.everyone ? '' : ' for ' + d.names.join(' and ')}`;
   const makeup = [
-    `Bill ${fmt(expense.subtotal, doc.currency)}`,
-    ...expense.taxes.map((t) => `${t.label} ${fmt(t.amount, doc.currency)}`),
-    expense.rounding ? `round off ${expense.rounding < 0 ? '-' : '+'}${fmt(Math.abs(expense.rounding), doc.currency)}` : null,
+    `Bill ${cash(expense.subtotal)}`,
+    ...before.map((d) => `less ${label(d)} ${cash(d.amount)}`),
+    ...expense.taxes.map((t) => `plus ${t.label} ${cash(t.amount)}`),
+    ...after.map((d) => `less ${label(d)} ${cash(d.amount)}`),
+    expense.rounding
+      ? `round off ${expense.rounding < 0 ? '-' : '+'}${cash(Math.abs(expense.rounding))}`
+      : null,
   ]
     .filter(Boolean)
-    .join('  +  ');
-  const makeupLines = expense.taxes.length || expense.rounding ? wrapLines(mctx(), makeup, w - PAD * 2, 12, 500) : [];
+    .join(', ');
+  const hasMakeup = expense.taxes.length || expense.rounding || discounts.length;
+  const makeupLines = hasMakeup ? wrapLines(mctx(), makeup, w - PAD * 2, 12, 500) : [];
   const noteLines = expense.notes ? wrapLines(mctx(), expense.notes, w - PAD * 2, 12, 500) : [];
   const h =
     62 + makeupLines.length * 18 + 24 + expense.paidBy.length * 22 + 24 + expense.shares.length * 22 + noteLines.length * 16 + 22;

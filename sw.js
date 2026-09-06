@@ -1,7 +1,7 @@
 // Offline-first service worker. The whole app is precached on install, so
 // after the first visit SuperSplit never needs the network again.
 
-const VERSION = 'supersplit-v11';
+const VERSION = 'supersplit-v12';
 const ASSETS = [
   './',
   './index.html',

@@ -148,6 +148,9 @@
     }
   ],
   "rewrites": [
-    { "source": "/supersplit/:path*", "destination": "/:path*" }
+    {
+      "source": "/supersplit/:path*",
+      "destination": "/:path*"
+    }
   ]
 }

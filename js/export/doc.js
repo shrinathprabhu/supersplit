@@ -80,6 +80,15 @@ export function expenseDetail(ledger, expense) {
       value: t.value,
       mode: t.mode,
     })),
+    discounts: (c.discounts || []).map((d) => ({
+      label: d.label || 'Discount',
+      amount: d.amount,
+      kind: d.kind,
+      value: d.value,
+      stage: d.stage,
+      everyone: d.everyone,
+      names: d.members.map((id) => member(ledger, id).name),
+    })),
     rounding: c.rounding?.amount || 0,
     total: c.total,
     paidBy: expense.payers.members
@@ -88,7 +97,7 @@ export function expenseDetail(ledger, expense) {
     shares: expense.split.members.map((id) => ({
       member: member(ledger, id),
       preTax: c.preTax[id] || 0,
-      tax: (c.taxByMember[id] || 0) + (c.rounding?.per?.[id] || 0),
+      tax: (c.taxByMember[id] || 0) - (c.discountByMember?.[id] || 0) + (c.rounding?.per?.[id] || 0),
       amount: c.owed[id] || 0,
     })),
     splitMode: expense.split.mode,
