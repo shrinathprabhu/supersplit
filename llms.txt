@@ -19,6 +19,10 @@ https://github.com/shrinathprabhu/supersplit. It is built by Shrinath Prabhu
   and fees, each a percentage (GST 18%) or a flat amount (a 300 rupee service
   charge). Each tax is spread either by share, in proportion to what each
   person consumed, or equally for flat per-head charges.
+- **Bill scanning.** Choose or photograph an image receipt and the bundled
+  English Tesseract OCR model looks for the total and legible tax or fee lines.
+  It runs only in the browser, never uploads or saves the image, and leaves all
+  extracted values editable for verification before saving.
 - **Bill round-off.** Shops round the printed total, so 103.33 becomes 103 or
   104. Choose nearest whole unit (the GST rule, where 50 paise and over rounds
   up), always round up, or type the exact printed figure. The difference is
@@ -63,11 +67,11 @@ One currency per group, chosen when the group is created.
 
 ## Technical notes
 
-A plain ES module progressive web app: no framework, no build step, no runtime
-dependencies beyond a vendored copy of Apache ECharts for the charts. Data
-lives in IndexedDB, falling back to localStorage. A service worker precaches
-the app so it launches with no network. Content Security Policy is strict and
-the app makes no outbound requests of any kind.
+A plain ES module progressive web app: no framework and no build step. Apache
+ECharts and Tesseract.js with its English OCR model are vendored for charts and
+bill scanning. Data lives in IndexedDB, falling back to localStorage. A service
+worker precaches the app so it launches with no network. Content Security
+Policy is strict and the app makes no outbound requests of any kind.
 
 ## Links
 

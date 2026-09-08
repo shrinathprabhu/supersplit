@@ -1,7 +1,7 @@
 {
   "name": "SuperSplit bill splitter",
   "short_name": "SuperSplit",
-  "description": "Split bills with friends. Taxes, uneven payers, bill round-off, simplified debts and shareable receipts. Works offline, no account, nothing leaves your device.",
+  "description": "Scan and split bills with friends. Taxes, uneven payers, bill round-off, simplified debts and shareable receipts. Works offline, no account, nothing leaves your device.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

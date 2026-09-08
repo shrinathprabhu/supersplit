@@ -1,7 +1,7 @@
 // Offline-first service worker. The whole app is precached on install, so
 // after the first visit SuperSplit never needs the network again.
 
-const VERSION = 'supersplit-v12';
+const VERSION = 'supersplit-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
   './js/core/store.js',
   './js/core/avatar.js',
   './js/core/analytics.js',
+  './js/core/receipt-ocr.js',
   './js/core/transfer.js',
   './js/export/doc.js',
   './js/export/text.js',
@@ -43,6 +44,12 @@ const ASSETS = [
   './assets/apple-touch-icon.png',
   './assets/fonts/geist-variable.woff2',
   './vendor/echarts.common.min.js',
+  './vendor/tesseract/tesseract.min.js',
+  './vendor/tesseract/worker.min.js',
+  './vendor/tesseract/core/tesseract-core-lstm.wasm.js',
+  './vendor/tesseract/core/tesseract-core-simd-lstm.wasm.js',
+  './vendor/tesseract/core/tesseract-core-relaxedsimd-lstm.wasm.js',
+  './vendor/tesseract/lang/eng.traineddata.gz',
 ];
 
 self.addEventListener('install', (event) => {
@@ -95,7 +102,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Everything else (fonts, icons, the charting library) never changes
+  // Everything else (fonts, icons and vendored libraries) never changes
   // without a new filename, so it is served from the cache.
   event.respondWith(
     caches.match(request).then((cached) => {

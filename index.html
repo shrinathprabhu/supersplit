@@ -7,7 +7,7 @@
     <title>SuperSplit: offline bill splitter with taxes and simplified debts</title>
     <meta
       name="description"
-      content="Free bill splitting app that works offline in your browser. Split expenses with friends including GST and service charges, uneven payers, percentage or share splits and bill round-off. See who owes whom, simplify debts, and share a receipt as text, image or PDF. No account, no server, nothing leaves your device."
+      content="Free offline bill splitting app. Scan a receipt locally for its total and tax lines, split expenses with friends, simplify debts, and share the result. No account, no server, nothing leaves your device."
     />
     <link rel="canonical" href="https://lowkey.tools/supersplit" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
@@ -20,7 +20,7 @@
     <meta property="og:title" content="SuperSplit: offline bill splitter with taxes and simplified debts" />
     <meta
       property="og:description"
-      content="Split bills with friends in your browser. Taxes, uneven payers, bill round-off, simplified debts and shareable receipts. Works offline, no account, nothing leaves your device."
+      content="Scan and split bills with friends in your browser. Taxes, bill round-off, simplified debts and shareable receipts. Works offline, no account, nothing leaves your device."
     />
     <meta property="og:url" content="https://lowkey.tools/supersplit" />
     <meta property="og:image" content="https://lowkey.tools/supersplit/assets/og-image.png" />
@@ -64,7 +64,7 @@
             "name": "SuperSplit",
             "alternateName": "SuperSplit bill splitter",
             "url": "https://lowkey.tools/supersplit",
-            "description": "A free bill splitting app that runs entirely in the browser. Split group expenses including taxes and fees, uneven payers, percentage and share splits and bill round-off, then settle up with actual or simplified debts and share a receipt as text, an image or a PDF. Works offline, needs no account, and stores everything on the device.",
+            "description": "A free bill splitting app that runs entirely in the browser. Scan a bill image locally, split group expenses including taxes and fees, settle up with actual or simplified debts, and share a receipt as text, an image or a PDF. Works offline, needs no account, and stores everything on the device.",
             "applicationCategory": "FinanceApplication",
             "applicationSubCategory": "Expense splitting",
             "operatingSystem": "Any modern web browser (iOS, Android, macOS, Windows, Linux)",
@@ -81,6 +81,7 @@
             "featureList": [
               "Split bills equally, by exact amounts, by percentage or by shares",
               "Add any number of taxes and fees as a percentage or a flat amount",
+              "Scan an image receipt locally for its total and legible tax lines",
               "Spread each tax by share or equally",
               "Round the bill total to the nearest, up, or to the exact printed figure",
               "Record several people paying one bill, equally or in different amounts",
@@ -93,7 +94,7 @@
               "No account, no server, no tracking"
             ],
             "permissions": "none",
-            "storageRequirements": "About 1 MB of browser storage",
+            "storageRequirements": "About 16 MB for the offline app, plus saved data",
             "author": {
               "@type": "Person",
               "name": "Shrinath Prabhu",
@@ -161,6 +162,14 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "Yes. Turn on round off and choose nearest whole unit, which follows the GST rule where 50 paise and over rounds up, or always round up, or type the exact total printed on the bill. The difference is spread across the same split so the shares still add up to the printed total."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can SuperSplit scan a receipt?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Choose or photograph an image receipt and SuperSplit uses an English OCR model running entirely in your browser to find the printed total and legible tax or fee lines. The image is never uploaded or saved, and every extracted value remains editable so you can check it against the bill before saving."
                 }
               },
               {
@@ -246,6 +255,7 @@
         <ul>
           <li>Split a bill equally, by exact amounts, by percentage or by shares, and leave anyone out who was not in on it.</li>
           <li>Add GST, service charge or any other tax and fee, as a percentage or a flat amount, spread by share or equally.</li>
+          <li>Scan an image receipt on the device to suggest its total and legible tax or fee lines, then review every value.</li>
           <li>Round the total the way the shop did: nearest whole unit, always up, or the exact figure printed on the bill.</li>
           <li>Record several people paying one bill, equally or in different amounts.</li>
           <li>See who owes whom as actual debts, or simplified into the fewest possible payments, and settle up in full or in part.</li>

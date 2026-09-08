@@ -8,7 +8,7 @@ import socketserver
 import sys
 
 CSP = (
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; "
     "manifest-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; "
     "form-action 'none'; frame-ancestors 'none'"

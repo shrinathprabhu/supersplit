@@ -4,8 +4,8 @@ A bill splitter that lives entirely in your browser. No account, no server, no
 network. Everything is stored in IndexedDB on the device and the app keeps
 working with the Wi-Fi off.
 
-Built as a plain ES-module PWA: no framework, no build step, no runtime
-dependencies. Serve the folder and it runs.
+Built as a plain ES-module PWA: no framework, no build step, and no remote
+runtime dependencies. Serve the folder and it runs.
 
 ## Run it
 
@@ -36,6 +36,14 @@ and fees:
 - a percentage (GST 18%) or a flat amount (₹300 service charge)
 - each one is spread either **by share**, in proportion to what each person
   actually consumed, or **equally**, for flat per-head fees like a cover charge
+
+**Bill scanning.** Choose or photograph a JPG, PNG, WebP, BMP or GIF receipt
+and the expense editor uses the bundled English Tesseract OCR model to look for
+the printed total and legible tax or fee lines. A confident breakdown fills the
+pre-tax amount and flat tax rows; otherwise it fills only the possible total.
+Scans are suggestions rather than source-of-truth accounting, so the result is
+always left editable and clearly asks to be checked before saving. The image is
+processed in memory, is not saved with the expense, and is never uploaded.
 
 **Discounts.** A bill that shows the full amount with the money off written
 underneath is its own thing, not a negative tax, so it gets its own section.
@@ -162,7 +170,7 @@ manifest.webmanifest  PWA manifest
 sw.js                 offline cache, precaches the whole app
 css/app.css           design tokens and every component
 assets/               logo, favicon, PWA icons, Geist
-vendor/               Apache ECharts, vendored for offline use
+vendor/               Apache ECharts and Tesseract OCR, vendored for offline use
 js/
   app.js              boot and hash router
   core/
@@ -172,6 +180,7 @@ js/
     split.js          one expense to per-person paid/owed, taxes and round-off
     balances.js       net balances, actual and simplified debts, explanations
     analytics.js      daily series and per-group totals for the charts
+    receipt-ocr.js    local receipt OCR loading and conservative amount parsing
     transfer.js       export, import planning, conflict and duplicate detection
     avatar.js         generated avatars, in SVG and on canvas
   export/
@@ -207,6 +216,11 @@ first time a chart is needed rather than on boot, and precached so it keeps
 working offline. Tooltips are a bonus rather than the only way to read a
 chart: the legend and the figures under each chart always spell the numbers
 out.
+
+Receipt scanning uses vendored Tesseract.js 7, its LSTM WebAssembly core and
+the compact English model. The service worker precaches all three core variants
+used for browser feature detection plus the model, so no CDN or OCR server is
+needed. The runtime is loaded only when someone scans a bill.
 
 The mark is a receipt with a torn edge whose face is a calculator. It is drawn
 in code (`js/export/paint.js`) as well as in SVG, so it renders at any size and
@@ -293,16 +307,17 @@ Two more things follow from being proxied onto a path:
   `supersplit.lowkey.tools`. Publish and link one of them; the canonical tag
   already points at the path version.
 
-**Caching.** The font and the vendored library never change, so they get a year
+**Caching.** The font and the vendored libraries never change, so they get a year
 with `immutable`. HTML, `sw.js` and the manifest must always revalidate, or a
 deploy would not reach anyone. JS and CSS have no content hashes in their
 names, so they sit in between: the browser revalidates on every load (a cheap
 304) while the CDN caches them for a year and Vercel purges the edge on deploy.
 
 **Security.** A strict Content-Security-Policy (`default-src 'self'`, no
-`unsafe-eval`, no external origins at all, framing denied), HSTS with preload,
+JavaScript `unsafe-eval`, no external origins at all, framing denied), HSTS with preload,
 `nosniff`, `no-referrer`, same-origin COOP and CORP, and a Permissions-Policy
-that turns off camera, microphone, geolocation and the rest. The app talks to
+that turns off camera, microphone, geolocation and the rest. WebAssembly
+compilation is allowed only so the local OCR core can run. The app talks to
 nothing off-origin, so the policy can stay this tight.
 
 `.claude/devserver.py` sends the same security headers, so a policy mistake

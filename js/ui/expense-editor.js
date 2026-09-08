@@ -8,6 +8,7 @@ import { avatarNode, moneyInput, numberInput, segmented, checkbox } from './comp
 import { getGroup, saveExpense, deleteExpense, getExpense, carryBefore } from '../core/store.js';
 import { blankExpense, newTax, newDiscount, computeExpense, makeCarry, roundTarget, toDateKey } from '../core/split.js';
 import { fmt, allocate, currency as curInfo } from '../core/money.js';
+import { scanReceiptImage } from '../core/receipt-ocr.js';
 import { findLookalikes } from '../core/transfer.js';
 
 const PAYER_MODES = [
@@ -48,6 +49,10 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
   let computed = compute();
   let showErrors = false; // errors appear once the user has tried to save
   let lastDate = draft.date;
+  let firstRender = true;
+  let scanController = null;
+  let sheetClosed = false;
+  let scanState = { phase: 'idle', progress: 0, label: '' };
 
   function normalise(expense) {
     // Expenses saved before round-off existed, or before it had modes.
@@ -186,6 +191,186 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
   const nameOf = (id) => memberById.get(id)?.name || 'Someone';
 
   // -------------------------------------------------------------- sections
+
+  function receiptScanSection() {
+    const input = h('input', {
+      type: 'file',
+      accept: 'image/jpeg,image/png,image/webp,image/bmp,image/gif',
+      capture: 'environment',
+      style: { display: 'none' },
+      onChange: (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (file) runReceiptScan(file);
+      },
+    });
+
+    const pick = h(
+      'button',
+      {
+        class: 'btn btn--quiet btn--sm',
+        disabled: scanState.phase === 'scanning',
+        onClick: () => input.click(),
+      },
+      icon('image', 17),
+      scanState.phase === 'done' || scanState.phase === 'error' ? 'Scan another' : 'Choose a bill photo',
+    );
+
+    const content = [
+      h(
+        'div',
+        { class: 'row row--between row--wrap', style: { gap: '10px' } },
+        h(
+          'div',
+          { class: 'grow' },
+          h('div', { style: { fontWeight: '650' }, text: 'Scan a bill' }),
+          h('div', { class: 'tiny muted', text: 'Find the total and legible tax lines from a photo.' }),
+        ),
+        scanState.phase === 'scanning'
+          ? h(
+              'button',
+              {
+                class: 'btn btn--quiet btn--sm',
+                onClick: cancelReceiptScan,
+              },
+              'Cancel',
+            )
+          : pick,
+      ),
+      input,
+    ];
+
+    if (scanState.phase === 'scanning') {
+      nodes.scanProgress = h('progress', {
+        class: 'scan-progress',
+        max: 1,
+        value: scanState.progress,
+        'aria-label': scanState.label || 'Scanning bill',
+      });
+      nodes.scanStatus = h('div', {
+        class: 'tiny muted',
+        role: 'status',
+        'aria-live': 'polite',
+        text: `${scanState.label || 'Reading the bill'} · ${Math.round(scanState.progress * 100)}%`,
+      });
+      content.push(h('div', { class: 'stack stack--sm scan-status' }, nodes.scanProgress, nodes.scanStatus));
+    } else if (scanState.phase === 'done') {
+      const found = scanState.result;
+      const taxText = found.taxes.length
+        ? ` plus ${found.taxes.length} ${found.taxes.length === 1 ? 'tax or fee line' : 'tax or fee lines'}`
+        : '';
+      content.push(
+        h(
+          'div',
+          { class: 'banner banner--good scan-result', role: 'status' },
+          h('div', {
+            text: `${found.totalConfidence === 'low' ? 'Possible total' : 'Found total'} ${fmt(found.total, code)}${taxText}.`,
+          }),
+          h('div', { class: 'tiny', text: 'The fields below were filled in. Check them against the bill before saving.' }),
+        ),
+      );
+    } else if (scanState.phase === 'error') {
+      content.push(h('div', { class: 'banner scan-result', role: 'alert', text: scanState.message }));
+    } else {
+      content.push(
+        h('div', {
+          class: 'tiny muted scan-note',
+          text: 'Runs privately on this device. Clear, straight photos with the full total work best.',
+        }),
+      );
+    }
+
+    return h('div', { class: 'card scan-card' }, content);
+  }
+
+  async function runReceiptScan(file) {
+    const supported =
+      /^image\/(?:jpeg|png|webp|bmp|gif)$/i.test(file.type) || /\.(?:jpe?g|png|webp|bmp|gif)$/i.test(file.name);
+    if (!supported) {
+      scanState = { phase: 'error', progress: 0, label: '', message: 'Choose a JPG, PNG, WebP, BMP or GIF image.' };
+      ctx.refresh();
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      scanState = { phase: 'error', progress: 0, label: '', message: 'That image is over 15 MB. Choose a smaller photo.' };
+      ctx.refresh();
+      return;
+    }
+
+    scanController?.abort();
+    const controller = new AbortController();
+    scanController = controller;
+    scanState = { phase: 'scanning', progress: 0, label: 'Loading scanner' };
+    ctx.refresh();
+
+    try {
+      const result = await scanReceiptImage(file, code, {
+        signal: controller.signal,
+        onProgress: ({ progress, label }) => {
+          if (scanController !== controller || controller.signal.aborted) return;
+          scanState.progress = progress;
+          scanState.label = label;
+          if (nodes.scanProgress) nodes.scanProgress.value = progress;
+          if (nodes.scanStatus) nodes.scanStatus.textContent = `${label} · ${Math.round(progress * 100)}%`;
+        },
+      });
+      if (sheetClosed || controller.signal.aborted) return;
+      if (!result.total) {
+        scanState = {
+          phase: 'error',
+          progress: 0,
+          label: '',
+          message: 'No bill total was clear enough to use. Try a sharper, straighter photo that includes the total.',
+        };
+        ctx.refresh();
+        return;
+      }
+
+      applyScannedReceipt(result);
+      scanState = { phase: 'done', progress: 1, label: 'Bill scanned', result };
+      ctx.refresh();
+    } catch (error) {
+      if (sheetClosed || error?.name === 'AbortError') {
+        if (!sheetClosed && scanController === controller) {
+          scanState = { phase: 'idle', progress: 0, label: '' };
+          ctx.refresh();
+        }
+        return;
+      }
+      console.error('Could not scan receipt', error);
+      scanState = {
+        phase: 'error',
+        progress: 0,
+        label: '',
+        message: 'The bill could not be scanned on this device. You can still enter the amount manually or try another photo.',
+      };
+      ctx.refresh();
+    } finally {
+      if (scanController === controller) scanController = null;
+    }
+  }
+
+  function cancelReceiptScan() {
+    const controller = scanController;
+    scanController = null;
+    controller?.abort();
+    scanState = { phase: 'idle', progress: 0, label: '' };
+    ctx.refresh();
+  }
+
+  function applyScannedReceipt(result) {
+    draft.subtotal = result.subtotal;
+    draft.taxes = result.taxes.map((tax) => ({ ...newTax(tax.label), kind: 'amount', value: tax.amount }));
+    // The MVP does not guess discounts. Clearing them keeps the scanned total
+    // exact rather than applying an old/manual discount a second time.
+    draft.discounts = [];
+
+    const rawTotal = result.subtotal + result.taxes.reduce((sum, tax) => sum + tax.amount, 0);
+    draft.roundOff =
+      rawTotal === result.total
+        ? { enabled: false, mode: 'nearest', total: null }
+        : { enabled: true, mode: 'exact', total: result.total };
+  }
 
   function taxesSection() {
     const list = h('div', {});
@@ -848,6 +1033,8 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
     subtitle: group.name,
     full: true,
     render: () => {
+      const shouldAutofocus = !existing && firstRender;
+      firstRender = false;
       nodes.total = h('b', { class: 'num', style: { fontSize: '1.08rem' } }, '--');
       nodes.totalHint = h('span', { class: 'tiny muted' });
       nodes.banner = h('div', { class: 'banner', style: { display: 'none' } });
@@ -855,6 +1042,7 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
       const body = h(
         'div',
         { class: 'stack' },
+        receiptScanSection(),
         h(
           'div',
           { class: 'card' },
@@ -863,7 +1051,7 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
             currency: code,
             value: draft.subtotal,
             size: 'big',
-            autofocus: !existing,
+            autofocus: shouldAutofocus,
             onChange: (v) => {
               draft.subtotal = v ?? 0;
               recompute();
@@ -997,6 +1185,10 @@ export function openExpenseEditor({ groupId, expenseId = null, onSaved }) {
       }
       buttons.push(save);
       return buttons;
+    },
+    onClose: () => {
+      sheetClosed = true;
+      scanController?.abort();
     },
   });
 }
