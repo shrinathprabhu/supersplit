@@ -4,6 +4,24 @@ workers_dev = false
 preview_urls = false
 send_metrics = false
 
+[build]
+command = "node scripts/build-cloudflare.mjs"
+# Watch source files only; rebuilding dist/ must not trigger another build.
+watch_dir = [
+  "index.html",
+  "manifest.webmanifest",
+  "robots.txt",
+  "sitemap.xml",
+  "llms.txt",
+  "sw.js",
+  "_headers",
+  "assets",
+  "css",
+  "js",
+  "vendor",
+  "scripts",
+]
+
 [[routes]]
 pattern = "supersplit.lowkey.tools"
 custom_domain = true

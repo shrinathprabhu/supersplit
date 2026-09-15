@@ -270,20 +270,30 @@ For a Git-integrated Worker, use:
 - Worker name: `supersplit` (it must match `wrangler.toml`)
 - Production branch: `main`
 - Root directory: leave blank (the repository root)
-- Build command: `node scripts/build-cloudflare.mjs`
+- Build environment variable: `NODE_VERSION=24` (current Wrangler requires Node 22+)
+- Build command: leave blank (Wrangler runs the checked-in `[build].command`)
 - Deploy command: `npx wrangler deploy`
 
-The copy-only build puts the app and `_headers` in `dist/`, without repository
-or provider configuration. `wrangler.toml` attaches those static assets to the
+Wrangler automatically runs `node scripts/build-cloudflare.mjs` before deploying
+or starting a local preview. The copy-only build puts the app and `_headers` in
+`dist/`, without repository or provider configuration. This works on a fresh
+checkout without a pre-existing `dist/` directory; do not commit that directory.
+`wrangler.toml` attaches those static assets to the
 `supersplit.lowkey.tools` Custom Domain through `[[routes]]` with
 `pattern = "supersplit.lowkey.tools"` and `custom_domain = true`. The hostname is
 configured when `wrangler deploy` succeeds; local previews do not attach it.
 Both the default `workers.dev` hostname and version preview URLs are disabled,
-leaving one public origin and one set of
-canonical signals. For a direct deployment after authenticating Wrangler, run
-`node scripts/build-cloudflare.mjs` followed by `npx wrangler deploy`. No Worker
+leaving one public origin and one set of canonical signals. For a direct
+deployment after authenticating Wrangler, run `npx wrangler deploy`. No Worker
 script or `_redirects` file is needed because the app is entirely static and
 uses hash routing.
+
+If deployment reports that `assets.directory` does not exist, confirm the deployed
+commit includes the `[build]` section and `scripts/build-cloudflare.mjs`, and
+that the dashboard root directory is the repository root. The build hook must
+create `dist/` before Wrangler reads its assets. A separate dashboard build
+command of `node scripts/build-cloudflare.mjs` also works, but repeats the same
+build when the Wrangler hook runs.
 
 `.claude/devserver.py` mirrors that layout at <http://localhost:5173/> while
 also sending the production security headers.
