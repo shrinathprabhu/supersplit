@@ -13,10 +13,10 @@ runtime dependencies. Serve the folder and it runs.
 python3 .claude/devserver.py 5173
 ```
 
-Then open <http://localhost:5173/supersplit/>. The dev server mirrors the
-production path prefix, so local URLs match the deployed ones. Any static server works (`npx serve`,
+Then open <http://localhost:5173/>. Any static server works (`npx serve`,
 `python3 -m http.server`, Netlify, GitHub Pages, an S3 bucket); the bundled dev
-server just adds no-cache headers so edits show up immediately.
+server just adds the production security headers and disables caching so edits
+show up immediately.
 
 It needs `http://` or `https://`. Opening `index.html` over `file://` breaks ES
 modules and service workers. Add `?nosw=1` to the URL to skip service-worker
@@ -236,7 +236,7 @@ involve serving different content to crawlers than to people:
   which doubles as the loading screen, plus a `noscript` block spelling out
   every feature
 - `application/ld+json` carries a `WebApplication`, an `Organization`, a
-  `WebSite` and a nine-question `FAQPage`, which is what answer engines quote
+  `WebSite` and a ten-question `FAQPage`, which is what answer engines quote
 - `llms.txt` is a plain-language summary of the whole app for model crawlers,
   following the llmstxt.org convention
 
@@ -251,67 +251,53 @@ it at 1200 square, then cropping the middle 630.
 
 ## Deploying
 
-`vercel.json` carries the production headers. Any static host works, but if you
-use something else, mirror these.
+`_headers` is the security and caching response policy for Cloudflare Workers
+Static Assets. `wrangler.toml` declares the Worker, packaged asset directory and
+the `supersplit.lowkey.tools` Custom Domain.
 
-### Serving it under a path
+### Hosting at the domain root
 
-`index.html` points at `/supersplit/css/app.css`, `/supersplit/js/app.js` and
-so on, and the service worker registers `/supersplit/sw.js` with scope
-`/supersplit/`. Absolute paths mean the app does not care whether it is
-reached with a trailing slash, but they do fix it to one path.
+The production URL is `https://supersplit.lowkey.tools/`. Static assets are
+root-relative, and the service worker is registered at `/sw.js` with `/` scope,
+so the app must be deployed at the root of that hostname. There is no proxy or
+path-prefix rewrite. Cloudflare Workers serves this repository as a static site.
+The Workers build copies only public files into `dist/` before deployment.
 
-The public URL is `https://lowkey.tools/supersplit/`, where the parent site
-proxies to this project and strips the prefix on the way:
+### Cloudflare Workers
 
-```json
-{ "source": "/supersplit", "destination": "https://supersplit.lowkey.tools" },
-{ "source": "/supersplit/:path*", "destination": "https://supersplit.lowkey.tools/:path*" }
-```
+For a Git-integrated Worker, use:
 
-Because the prefix is stripped, the origin never sees `/supersplit`, so anyone
-reaching `supersplit.lowkey.tools` directly would follow the absolute paths
-into a 404. This project's own `vercel.json` maps the prefix back onto the
-root to cover that:
+- Worker name: `supersplit` (it must match `wrangler.toml`)
+- Production branch: `main`
+- Root directory: leave blank (the repository root)
+- Build command: `node scripts/build-cloudflare.mjs`
+- Deploy command: `npx wrangler deploy`
 
-```json
-"rewrites": [{ "source": "/supersplit/:path*", "destination": "/:path*" }]
-```
+The copy-only build puts the app and `_headers` in `dist/`, without repository
+or provider configuration. `wrangler.toml` attaches those static assets to the
+`supersplit.lowkey.tools` Custom Domain through `[[routes]]` with
+`pattern = "supersplit.lowkey.tools"` and `custom_domain = true`. The hostname is
+configured when `wrangler deploy` succeeds; local previews do not attach it.
+Both the default `workers.dev` hostname and version preview URLs are disabled,
+leaving one public origin and one set of
+canonical signals. For a direct deployment after authenticating Wrangler, run
+`node scripts/build-cloudflare.mjs` followed by `npx wrangler deploy`. No Worker
+script or `_redirects` file is needed because the app is entirely static and
+uses hash routing.
 
-`.claude/devserver.py` does the same thing, and redirects `/supersplit` to
-`/supersplit/`, so local development runs on the same URLs as production.
-Browse to <http://localhost:5173/supersplit/>.
+`.claude/devserver.py` mirrors that layout at <http://localhost:5173/> while
+also sending the production security headers.
 
-**The parent site should still add the trailing-slash redirect**, even though
-assets no longer depend on it:
-
-```json
-"redirects": [
-  { "source": "/supersplit", "destination": "/supersplit/", "permanent": true }
-]
-```
-
-A service worker only controls pages at or below its scope, and `/supersplit`
-sits just outside `/supersplit/`. Without the redirect the app still loads at
-the bare path, but it will not work offline there.
-
-Two more things follow from being proxied onto a path:
-
-- **`robots.txt`, `sitemap.xml` and `llms.txt` here only count for this
-  project's own domain.** Crawlers read them from the root of whatever host
-  they are on, so lowkey.tools needs its own root `robots.txt` listing
-  `Sitemap: https://lowkey.tools/supersplit/sitemap.xml`, and its own root
-  `llms.txt`.
-- **The two hosts are different origins, so they hold different data.** A
-  group created on `lowkey.tools/supersplit/` is not visible on
-  `supersplit.lowkey.tools`. Publish and link one of them; the canonical tag
-  already points at the path version.
+Browser storage is isolated by origin, so changing the production hostname does
+not migrate existing browser data automatically. Export a profile before the
+move and import it on the new hostname if that data needs to come across.
 
 **Caching.** The font and the vendored libraries never change, so they get a year
 with `immutable`. HTML, `sw.js` and the manifest must always revalidate, or a
 deploy would not reach anyone. JS and CSS have no content hashes in their
 names, so they sit in between: the browser revalidates on every load (a cheap
-304) while the CDN caches them for a year and Vercel purges the edge on deploy.
+304) while the CDN caches them for a year and the hosting platform invalidates
+the deployed edge assets.
 
 **Security.** A strict Content-Security-Policy (`default-src 'self'`, no
 JavaScript `unsafe-eval`, no external origins at all, framing denied), HSTS with preload,

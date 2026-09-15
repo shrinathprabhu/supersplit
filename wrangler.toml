@@ -1,0 +1,13 @@
+name = "supersplit"
+compatibility_date = "2026-09-15"
+workers_dev = false
+preview_urls = false
+send_metrics = false
+
+[[routes]]
+pattern = "supersplit.lowkey.tools"
+custom_domain = true
+
+[assets]
+directory = "./dist"
+html_handling = "auto-trailing-slash"

@@ -1,4 +1,4 @@
-# SuperSplit, https://lowkey.tools/supersplit/
+# SuperSplit, https://supersplit.lowkey.tools/
 # Everything here is public and safe to index, including by AI crawlers.
 
 User-agent: *
@@ -72,4 +72,4 @@ Allow: /
 User-agent: Bytespider
 Allow: /
 
-Sitemap: https://lowkey.tools/supersplit/sitemap.xml
+Sitemap: https://supersplit.lowkey.tools/sitemap.xml

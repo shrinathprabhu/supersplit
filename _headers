@@ -1,0 +1,66 @@
+# Cloudflare Workers Static Assets security and caching response policy.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), interest-cohort=()
+
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800, s-maxage=31536000
+
+/assets/*.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800, s-maxage=31536000
+
+/assets/*.jpg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800, s-maxage=31536000
+
+/assets/*.jpeg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800, s-maxage=31536000
+
+/assets/*.webp
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800, s-maxage=31536000
+
+/assets/*.ico
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800, s-maxage=31536000
+
+/js/*
+  Cache-Control: public, max-age=0, must-revalidate, s-maxage=31536000, stale-while-revalidate=86400
+
+/css/*
+  Cache-Control: public, max-age=0, must-revalidate, s-maxage=31536000, stale-while-revalidate=86400
+
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate, s-maxage=604800
+  Content-Type: application/manifest+json; charset=utf-8
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/robots.txt
+  Cache-Control: public, max-age=0, must-revalidate, s-maxage=86400
+  Content-Type: text/plain; charset=utf-8
+
+/llms.txt
+  Cache-Control: public, max-age=0, must-revalidate, s-maxage=86400
+  Content-Type: text/plain; charset=utf-8
+
+/sitemap.xml
+  Cache-Control: public, max-age=0, must-revalidate, s-maxage=86400
+  Content-Type: application/xml; charset=utf-8

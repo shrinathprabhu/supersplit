@@ -5,10 +5,11 @@
 > splits and bill round-off, then settle up and share a receipt. It works
 > fully offline, needs no account, and stores everything on the device.
 
-SuperSplit is at https://lowkey.tools/supersplit/ and is open source at
+SuperSplit is at https://supersplit.lowkey.tools/ and is open source at
 https://github.com/shrinathprabhu/supersplit. It is built by Shrinath Prabhu
 (https://shrinath.me), from the makers of OwlEye Analytics
-(https://owleye.dev). Free, no accounts, no adverts, no tracking, no server.
+(https://owleye.dev), and is part of lowkey.tools (https://lowkey.tools).
+Free, no accounts, no adverts, no tracking, no server.
 
 ## What it does
 
@@ -75,7 +76,10 @@ Policy is strict and the app makes no outbound requests of any kind.
 
 ## Links
 
-- [App](https://lowkey.tools/supersplit/): the app itself
+- [App](https://supersplit.lowkey.tools/): the app itself
 - [Source](https://github.com/shrinathprabhu/supersplit): full source on GitHub
 - [Author](https://shrinath.me): Shrinath Prabhu
+- [Follow the maker](https://x.com/shrinath_prabhu): @shrinath_prabhu on X
 - [OwlEye Analytics](https://owleye.dev): privacy-first product analytics, by the same maker
+- [lowkey.tools](https://lowkey.tools): the collection SuperSplit is part of
+- [SuperBrain](https://lowkey.tools/superbrain): a private, local-first home for notes, links and ideas

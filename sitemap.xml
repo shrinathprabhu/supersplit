@@ -2,12 +2,12 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://lowkey.tools/supersplit/</loc>
-    <lastmod>2026-09-04</lastmod>
+    <loc>https://supersplit.lowkey.tools/</loc>
+    <lastmod>2026-09-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://lowkey.tools/supersplit/assets/og-image.png</image:loc>
+      <image:loc>https://supersplit.lowkey.tools/assets/og-image.png</image:loc>
       <image:title>SuperSplit, an offline bill splitter</image:title>
       <image:caption>Split bills with friends. Taxes, uneven payers, simplified debts and shareable receipts.</image:caption>
     </image:image>

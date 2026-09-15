@@ -84,7 +84,7 @@ function registerServiceWorker() {
   if (location.protocol === 'file:') return; // needs http(s)
   if (new URLSearchParams(location.search).has('nosw')) return; // ?nosw=1 while developing
   navigator.serviceWorker
-    .register('/supersplit/sw.js', { scope: '/supersplit/' })
+    .register('/sw.js', { scope: '/' })
     .then((reg) => {
       reg.addEventListener('updatefound', () => {
         const worker = reg.installing;

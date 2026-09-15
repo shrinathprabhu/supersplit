@@ -45,6 +45,7 @@ export function homeScreen() {
         }),
       ),
     );
+    content.appendChild(homeFooter());
     return screen;
   }
 
@@ -58,7 +59,39 @@ export function homeScreen() {
     content.appendChild(h('div', { class: 'section-title', text: 'Spending' }));
     content.appendChild(insights);
   }
+  content.appendChild(homeFooter());
   return screen;
+}
+
+function homeFooter() {
+  const external = { target: '_blank', rel: 'noopener external' };
+  return h(
+    'footer',
+    { class: 'home-footer' },
+    h(
+      'div',
+      { class: 'home-footer__credits' },
+      'Part of ',
+      h('a', { href: 'https://lowkey.tools', ...external }, 'lowkey.tools'),
+      ' · Built by ',
+      h('a', { href: 'https://owleye.dev', ...external }, 'OwlEye Analytics'),
+      ' with ',
+      h('a', { href: 'https://shrinath.me', target: '_blank', rel: 'me author noopener' }, 'Shrinath Prabhu'),
+      '.',
+    ),
+    h(
+      'a',
+      { class: 'home-footer__companion', href: 'https://lowkey.tools/superbrain', ...external },
+      icon('sparkle', 17),
+      h(
+        'span',
+        {},
+        h('b', {}, 'Bills settled, ideas still everywhere?'),
+        h('span', {}, ' Give them a quiet home in SuperBrain.'),
+      ),
+      h('span', { 'aria-hidden': 'true' }, '→'),
+    ),
+  );
 }
 
 /** Daily spend across groups, plus where the money is going. */
@@ -476,11 +509,25 @@ export function openSettings() {
           'a',
           { class: 'list__item', href: 'https://lowkey.tools', target: '_blank', rel: 'noopener', style: { textDecoration: 'none', color: 'inherit' } },
           icon('sparkle', 19),
-          h('div', { class: 'grow' }, h('div', {}, 'More tools at lowkey.tools'), h('div', { class: 'tiny muted' }, 'Superbrain, Favigen and more')),
+          h('div', { class: 'grow' }, h('div', {}, 'Part of lowkey.tools'), h('div', { class: 'tiny muted' }, 'A collection of useful little tools')),
+          icon('share', 16),
+        ),
+        h(
+          'a',
+          { class: 'list__item', href: 'https://lowkey.tools/superbrain', target: '_blank', rel: 'noopener', style: { textDecoration: 'none', color: 'inherit' } },
+          icon('file', 19),
+          h('div', { class: 'grow' }, h('div', {}, 'Ideas need somewhere to land?'), h('div', { class: 'tiny muted' }, 'Keep notes, links and plans close in SuperBrain')),
           icon('share', 16),
         ),
       ),
-      h('div', { class: 'tiny muted center', style: { marginTop: '14px' } }, 'SuperSplit 1.0, built by ', h('a', { href: 'https://shrinath.me', target: '_blank', rel: 'noopener' }, 'Shrinath Prabhu')),
+      h(
+        'div',
+        { class: 'tiny muted center', style: { marginTop: '14px' } },
+        'SuperSplit 1.0 · Made by ',
+        h('a', { href: 'https://shrinath.me', target: '_blank', rel: 'me author noopener' }, 'Shrinath Prabhu'),
+        ' · ',
+        h('a', { href: 'https://x.com/shrinath_prabhu', target: '_blank', rel: 'me noopener' }, 'Follow @shrinath_prabhu'),
+      ),
     ],
   });
 }

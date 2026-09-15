@@ -9,9 +9,10 @@
       name="description"
       content="Free offline bill splitting app. Scan a receipt locally for its total and tax lines, split expenses with friends, simplify debts, and share the result. No account, no server, nothing leaves your device."
     />
-    <link rel="canonical" href="https://lowkey.tools/supersplit" />
+    <link rel="canonical" href="https://supersplit.lowkey.tools/" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <meta name="author" content="Shrinath Prabhu" />
+    <meta name="publisher" content="OwlEye Analytics" />
     <meta name="application-name" content="SuperSplit" />
     <meta name="keywords" content="bill splitter, split expenses, splitwise alternative, offline expense splitter, GST bill split, group expenses, settle up, simplify debts, PWA" />
 
@@ -22,8 +23,8 @@
       property="og:description"
       content="Scan and split bills with friends in your browser. Taxes, bill round-off, simplified debts and shareable receipts. Works offline, no account, nothing leaves your device."
     />
-    <meta property="og:url" content="https://lowkey.tools/supersplit" />
-    <meta property="og:image" content="https://lowkey.tools/supersplit/assets/og-image.png" />
+    <meta property="og:url" content="https://supersplit.lowkey.tools/" />
+    <meta property="og:image" content="https://supersplit.lowkey.tools/assets/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="SuperSplit: split bills with friends. Works offline, no account, nothing uploaded." />
@@ -35,24 +36,24 @@
       name="twitter:description"
       content="Split bills with friends in your browser. Taxes, uneven payers, simplified debts and shareable receipts. Works offline, no account."
     />
-    <meta name="twitter:image" content="https://lowkey.tools/supersplit/assets/og-image.png" />
+    <meta name="twitter:image" content="https://supersplit.lowkey.tools/assets/og-image.png" />
 
     <meta name="theme-color" content="#07060D" />
     <meta name="color-scheme" content="dark" />
     <meta name="msapplication-TileColor" content="#07060D" />
 
-    <link rel="manifest" href="/supersplit/manifest.webmanifest" />
-    <link rel="icon" href="/supersplit/assets/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/supersplit/assets/favicon-32.png" sizes="32x32" type="image/png" />
-    <link rel="apple-touch-icon" href="/supersplit/assets/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SuperSplit" />
 
-    <link rel="preload" href="/supersplit/assets/fonts/geist-variable.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="stylesheet" href="/supersplit/css/app.css" />
+    <link rel="preload" href="/assets/fonts/geist-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/css/app.css" />
 
     <script type="application/ld+json">
       {
@@ -60,10 +61,10 @@
         "@graph": [
           {
             "@type": "WebApplication",
-            "@id": "https://lowkey.tools/supersplit/#app",
+            "@id": "https://supersplit.lowkey.tools/#app",
             "name": "SuperSplit",
             "alternateName": "SuperSplit bill splitter",
-            "url": "https://lowkey.tools/supersplit",
+            "url": "https://supersplit.lowkey.tools/",
             "description": "A free bill splitting app that runs entirely in the browser. Scan a bill image locally, split group expenses including taxes and fees, settle up with actual or simplified debts, and share a receipt as text, an image or a PDF. Works offline, needs no account, and stores everything on the device.",
             "applicationCategory": "FinanceApplication",
             "applicationSubCategory": "Expense splitting",
@@ -73,11 +74,12 @@
             "inLanguage": "en",
             "isAccessibleForFree": true,
             "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-            "image": "https://lowkey.tools/supersplit/assets/og-image.png",
-            "screenshot": "https://lowkey.tools/supersplit/assets/og-image.png",
+            "image": "https://supersplit.lowkey.tools/assets/og-image.png",
+            "screenshot": "https://supersplit.lowkey.tools/assets/og-image.png",
             "license": "https://github.com/shrinathprabhu/supersplit",
             "codeRepository": "https://github.com/shrinathprabhu/supersplit",
-            "sameAs": ["https://github.com/shrinathprabhu/supersplit"],
+            "sameAs": ["https://github.com/shrinathprabhu/supersplit", "https://lowkey.tools"],
+            "isPartOf": { "@id": "https://lowkey.tools/#website" },
             "featureList": [
               "Split bills equally, by exact amounts, by percentage or by shares",
               "Add any number of taxes and fees as a percentage or a flat amount",
@@ -98,7 +100,8 @@
             "author": {
               "@type": "Person",
               "name": "Shrinath Prabhu",
-              "url": "https://shrinath.me"
+              "url": "https://shrinath.me",
+              "sameAs": ["https://x.com/shrinath_prabhu", "https://github.com/shrinathprabhu"]
             },
             "creator": { "@id": "https://owleye.dev/#organization" },
             "publisher": { "@id": "https://owleye.dev/#organization" }
@@ -114,15 +117,16 @@
           },
           {
             "@type": "WebSite",
-            "@id": "https://lowkey.tools/supersplit/#website",
-            "url": "https://lowkey.tools/supersplit",
+            "@id": "https://supersplit.lowkey.tools/#website",
+            "url": "https://supersplit.lowkey.tools/",
             "name": "SuperSplit",
             "inLanguage": "en",
+            "isPartOf": { "@id": "https://lowkey.tools/#website" },
             "publisher": { "@id": "https://owleye.dev/#organization" }
           },
           {
             "@type": "FAQPage",
-            "@id": "https://lowkey.tools/supersplit/#faq",
+            "@id": "https://supersplit.lowkey.tools/#faq",
             "mainEntity": [
               {
                 "@type": "Question",
@@ -269,9 +273,13 @@
           <a href="https://shrinath.me">Shrinath Prabhu</a>, from the makers of
           <a href="https://owleye.dev">OwlEye Analytics</a>. More tools at <a href="https://lowkey.tools">lowkey.tools</a>.
         </p>
+        <p>
+          Bills settled, ideas still everywhere? Give them a quiet home in
+          <a href="https://lowkey.tools/superbrain">SuperBrain</a>.
+        </p>
       </div>
     </noscript>
 
-    <script type="module" src="/supersplit/js/app.js"></script>
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>
