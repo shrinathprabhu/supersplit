@@ -4,12 +4,13 @@ import { init, subscribe, store, setSetting } from './core/store.js';
 import { homeScreen } from './ui/home.js';
 import { groupScreen } from './ui/group.js';
 import { baseHistoryState, closeAllSheets, toast } from './ui/shell.js';
-import { h, clear } from './util/dom.js';
+import { h } from './util/dom.js';
 import { disposeCharts } from './ui/charts.js';
 
 const root = document.getElementById('app');
 let lastKey = null;
 let booted = false;
+let renderQueued = false;
 
 export function navigate(hash) {
   // Any open sheet owns a history entry, so unwind those before moving.
@@ -36,19 +37,25 @@ function render() {
   const sameScreen = key === lastKey;
   const scroll = window.scrollY;
 
-  clear(root);
+  let nextScreen;
   try {
-    root.appendChild(route.name === 'group' ? groupScreen(route.id, route.tab) : homeScreen());
+    nextScreen = route.name === 'group' ? groupScreen(route.id, route.tab) : homeScreen();
   } catch (err) {
     console.error(err);
-    root.appendChild(
-      h(
-        'div',
-        { class: 'content' },
-        h('div', { class: 'banner' }, 'Something went wrong rendering this screen.'),
-        h('button', { class: 'btn btn--primary', style: { marginTop: '12px' }, onClick: () => navigate('#/') }, 'Back to groups'),
-      ),
+    nextScreen = h(
+      'div',
+      { class: 'content wrap' },
+      h('div', { class: 'banner' }, 'Something went wrong rendering this screen.'),
+      h('button', { class: 'btn btn--primary', style: { marginTop: '12px' }, onClick: () => navigate('#/') }, 'Back to groups'),
     );
+  }
+
+  if (!sameScreen && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    nextScreen.classList.add('screen--enter');
+  }
+  root.replaceChildren(nextScreen);
+  if (nextScreen.classList.contains('screen--enter')) {
+    requestAnimationFrame(() => nextScreen.classList.remove('screen--enter'));
   }
 
   if (sameScreen) window.scrollTo(0, scroll);
@@ -61,21 +68,30 @@ function render() {
   }
 }
 
+function scheduleRender() {
+  if (!booted || renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
+}
+
 window.addEventListener('hashchange', () => {
   closeAllSheets();
   baseHistoryState();
-  render();
+  scheduleRender();
 });
 
 // Screens ask for a redraw after they mutate data.
-window.addEventListener('supersplit:refresh', () => render());
+window.addEventListener('supersplit:refresh', scheduleRender);
 
 async function boot() {
   await init();
   booted = true;
   baseHistoryState();
   render();
-  subscribe(() => render());
+  subscribe(scheduleRender);
   registerServiceWorker();
 }
 

@@ -1,52 +1,91 @@
-// Charts, drawn with Apache ECharts (vendored in /vendor so the app still
-// works offline). The library is fetched the first time a chart is needed,
-// which keeps it out of the initial load.
-//
-// Tooltips are a bonus, not the only way to read a chart: the legend and the
-// figures under each chart always spell the numbers out.
+// Native SVG charts: no large charting runtime, no per-frame JS animations.
+// Heights are reserved before rendering; offscreen charts wait until needed.
+// The legends and printed summaries remain the canonical accounting values.
 
 import { h, clear, fmtDate } from '../util/dom.js';
 import { fmt, currency as curInfo } from '../core/money.js';
 
 export const CHART_COLORS = ['#7C5CFF', '#37D6C3', '#FF5FA2', '#FFB53D', '#5BA8FF', '#C4F04B', '#FF7A5C', '#B77BFF'];
-
-const FONT = "Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif";
-const INK = '#f5f3ff';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const MUTED = '#8b83ad';
-const GRID = 'rgba(255,255,255,0.07)';
-
+const GRID = 'rgba(255,255,255,0.08)';
 const live = new Set();
-let loader = null;
+let chartId = 0;
 
-function loadECharts() {
-  if (window.echarts) return Promise.resolve(window.echarts);
-  if (!loader) {
-    loader = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = new URL('../../vendor/echarts.common.min.js', import.meta.url).href;
-      script.async = true;
-      script.onload = () => resolve(window.echarts);
-      script.onerror = () => reject(new Error('Charts could not be loaded'));
-      document.head.appendChild(script);
-    }).catch((err) => {
-      loader = null;
-      throw err;
-    });
+function svgNode(tag, attrs = {}, ...children) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === null || value === undefined) continue;
+    if (key === 'text') node.textContent = value;
+    else node.setAttribute(key, value);
   }
-  return loader;
+  for (const child of children.flat(Infinity)) if (child) node.appendChild(child);
+  return node;
 }
 
-/** Drop instances whose element has left the page. */
 export function disposeCharts() {
   for (const entry of [...live]) {
     if (entry.node.isConnected) continue;
-    entry.observer?.disconnect();
-    entry.chart.dispose();
+    entry.intersection?.disconnect();
+    entry.resize?.disconnect();
+    if (entry.raf) cancelAnimationFrame(entry.raf);
     live.delete(entry);
   }
 }
 
-/** Short money for axis ticks: ₹5k rather than ₹5,000.00. */
+function mount(box, draw, height, label) {
+  box.className = 'chart';
+  box.style.height = `${height}px`;
+  box.tabIndex = 0;
+  box.setAttribute('role', 'img');
+  box.setAttribute('aria-label', label);
+  const stage = h('div', { class: 'chart__stage', 'aria-hidden': 'true' });
+  box.appendChild(stage);
+  const entry = { node: box, intersection: null, resize: null, raf: 0, started: false, width: 0 };
+  live.add(entry);
+
+  const schedule = () => {
+    if (!box.isConnected || entry.raf) return;
+    entry.raf = requestAnimationFrame(() => {
+      entry.raf = 0;
+      if (!box.isConnected) return;
+      const width = Math.max(240, Math.round(box.getBoundingClientRect().width));
+      if (width === entry.width) return;
+      entry.width = width;
+      try {
+        draw(stage, width, height, box);
+      } catch (err) {
+        console.warn('Chart could not be rendered:', err);
+        clear(stage);
+        stage.appendChild(h('div', {
+          class: 'tiny muted',
+          style: { height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '18px' },
+          text: 'Chart unavailable. The figures below still add up.',
+        }));
+      }
+      box.classList.add('chart--ready');
+    });
+  };
+
+  const start = () => {
+    if (entry.started) return;
+    entry.started = true;
+    entry.intersection?.disconnect();
+    schedule();
+    if ('ResizeObserver' in window) {
+      entry.resize = new ResizeObserver(schedule);
+      entry.resize.observe(box);
+    }
+  };
+  if ('IntersectionObserver' in window) {
+    entry.intersection = new IntersectionObserver((entries) => {
+      if (entries.some((item) => item.isIntersecting)) start();
+    }, { rootMargin: '160px 0px' });
+    entry.intersection.observe(box);
+  } else requestAnimationFrame(start);
+  return box;
+}
+
 function tick(minor, code) {
   const c = curInfo(code);
   const sym = c.symbol.trim();
@@ -58,202 +97,169 @@ function tick(minor, code) {
   return sign + sym + String(Math.round(major));
 }
 
-const tooltipStyle = {
-  backgroundColor: '#221d40',
-  borderColor: 'rgba(255,255,255,0.18)',
-  borderWidth: 1,
-  padding: [9, 12],
-  extraCssText: 'border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.5);',
-  textStyle: { color: INK, fontSize: 12, fontFamily: FONT },
-};
-
-function mount(box, build, height) {
-  box.style.height = height + 'px';
-  loadECharts()
-    .then((echarts) => {
-      if (!box.isConnected) return;
-      const chart = echarts.init(box, null, { renderer: 'canvas' });
-      chart.setOption(build(echarts));
-      const observer = new ResizeObserver(() => chart.resize());
-      observer.observe(box);
-      live.add({ node: box, chart, observer });
-      disposeCharts();
-    })
-    .catch(() => {
-      clear(box);
-      box.style.height = 'auto';
-      box.appendChild(h('div', { class: 'tiny muted', style: { padding: '18px 0' }, text: 'Chart unavailable. The figures below still add up.' }));
-    });
-  return box;
+function maxValue(points) {
+  let max = 0;
+  for (const point of points) for (const value of point.values) if (value > max) max = value;
+  return max || 1;
 }
 
-/**
- * lineChart({ points: [{date, values:[n, n]}], series: [{name, color}] })
- * Values are integer minor units.
- */
+function labelIndexes(length, width) {
+  if (length <= 1) return [0];
+  const wanted = width < 380 ? 2 : width < 620 ? 3 : 4;
+  const count = Math.min(wanted, length);
+  return Array.from({ length: count }, (_, i) => Math.round((i * (length - 1)) / (count - 1)));
+}
+
+/** Daily lines, or grouped bars for spans of three days or fewer. */
 export function lineChart({ points, series, currency, height = 190 }) {
-  const box = h('div', { style: { width: '100%' } });
-  const labels = points.map((p) => fmtDate(p.date));
-  // A line through one or two points is not a line, so short spans are drawn
-  // as bars instead of leaving a stray dot floating in the grid.
-  const asBars = points.length <= 3;
+  const box = h('div');
+  if (!points.length) return box;
+  const label = `Daily spend chart. ${points.length} ${points.length === 1 ? 'day' : 'days'}, ${series.map((item) => item.name).join(' and ')}. Focus and use the arrow keys to inspect values.`;
+  return mount(box, (stage, width, chartHeight, host) => {
+    clear(stage);
+    for (const tip of host.querySelectorAll('.chart__tooltip')) tip.remove();
+    const left = width < 380 ? 48 : 58;
+    const right = 10;
+    const top = 12;
+    const plotW = width - left - right;
+    const plotH = chartHeight - top - 27;
+    const max = maxValue(points);
+    const asBars = points.length <= 3;
+    const xAt = (index) => left + (asBars ? ((index + 0.5) * plotW) / points.length : (index * plotW) / (points.length - 1));
+    const yAt = (value) => top + plotH - (Math.max(0, value) / max) * plotH;
+    const svg = svgNode('svg', { viewBox: `0 0 ${width} ${chartHeight}`, preserveAspectRatio: 'none' });
 
-  return mount(
-    box,
-    (echarts) => ({
-      animationDuration: 420,
-      grid: { left: 4, right: 10, top: 16, bottom: 2, containLabel: true },
-      tooltip: {
-        trigger: 'axis',
-        ...tooltipStyle,
-        axisPointer: asBars
-          ? { type: 'shadow', shadowStyle: { color: 'rgba(255,255,255,0.05)' } }
-          : { type: 'line', lineStyle: { color: 'rgba(255,255,255,0.25)', width: 1 } },
-        formatter: (rows) => {
-          const head = `<div style="font-weight:600;margin-bottom:4px">${rows[0].axisValueLabel}</div>`;
-          const body = rows
-            .map(
-              (r) =>
-                `<div style="display:flex;gap:10px;align-items:center;justify-content:space-between">` +
-                `<span style="color:${MUTED}">${r.marker}${r.seriesName}</span>` +
-                `<b>${fmt(r.value, currency)}</b></div>`,
-            )
-            .join('');
-          return head + body;
-        },
-      },
-      xAxis: {
-        type: 'category',
-        data: labels,
-        boundaryGap: asBars,
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
-        axisLabel: { color: MUTED, fontSize: 10.5, fontFamily: FONT, hideOverlap: true },
-      },
-      yAxis: {
-        type: 'value',
-        splitLine: { lineStyle: { color: GRID } },
-        axisLabel: { color: MUTED, fontSize: 10.5, fontFamily: FONT, formatter: (v) => tick(v, currency) },
-      },
-      series: series.map((s, i) =>
-        asBars
-          ? {
-              name: s.name,
-              type: 'bar',
-              barMaxWidth: 46,
-              barGap: '18%',
-              itemStyle: { color: s.color, borderRadius: [6, 6, 2, 2] },
-              emphasis: { focus: 'series' },
-              data: points.map((p) => p.values[i]),
-            }
-          : {
-              name: s.name,
-              type: 'line',
-              smooth: 0.2,
-              symbol: 'circle',
-              symbolSize: 6,
-              showSymbol: points.length <= 20,
-              lineStyle: { width: i === 0 ? 2.4 : 1.8, color: s.color, type: i === 0 ? 'solid' : 'dashed' },
-              itemStyle: { color: s.color, borderColor: '#0f0d1a', borderWidth: 1.5 },
-              emphasis: { focus: 'series', scale: 1.4 },
-              areaStyle:
-                i === 0
-                  ? {
-                      color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: withAlpha(s.color, 0.34) },
-                        { offset: 1, color: withAlpha(s.color, 0) },
-                      ]),
-                    }
-                  : undefined,
-              data: points.map((p) => p.values[i]),
-            },
-      ),
-    }),
-    height,
-  );
+    for (let i = 0; i <= 4; i++) {
+      const y = top + (i * plotH) / 4;
+      svg.appendChild(svgNode('line', { x1: left, y1: y, x2: width - right, y2: y, stroke: GRID, 'stroke-width': 1 }));
+      svg.appendChild(svgNode('text', { x: left - 7, y: y + 3.5, fill: MUTED, 'font-size': 10.5, 'text-anchor': 'end', text: tick((max * (4 - i)) / 4, currency) }));
+    }
+    for (const index of labelIndexes(points.length, width)) {
+      svg.appendChild(svgNode('text', {
+        x: xAt(index), y: chartHeight - 5, fill: MUTED, 'font-size': 10.5,
+        'text-anchor': index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle',
+        text: fmtDate(points[index].date),
+      }));
+    }
+
+    if (!asBars) {
+      const id = `chart-gradient-${++chartId}`;
+      svg.appendChild(svgNode('defs', {}, svgNode('linearGradient', { id, x1: '0', y1: '0', x2: '0', y2: '1' },
+        svgNode('stop', { offset: '0%', 'stop-color': series[0].color, 'stop-opacity': 0.32 }),
+        svgNode('stop', { offset: '100%', 'stop-color': series[0].color, 'stop-opacity': 0 }),
+      )));
+      const areaPoints = points.map((point, i) => `${xAt(i)},${yAt(point.values[0] || 0)}`).join(' ');
+      svg.appendChild(svgNode('polygon', { points: `${left},${top + plotH} ${areaPoints} ${width - right},${top + plotH}`, fill: `url(#${id})` }));
+    }
+    series.forEach((item, seriesIndex) => {
+      if (asBars) {
+        const groupW = Math.min(58, (plotW / points.length) * 0.7);
+        const barW = Math.max(4, groupW / series.length - 2);
+        points.forEach((point, i) => {
+          const value = point.values[seriesIndex] || 0;
+          const y = yAt(value);
+          svg.appendChild(svgNode('rect', {
+            x: xAt(i) - groupW / 2 + seriesIndex * (barW + 2), y, width: barW,
+            height: Math.max(1, top + plotH - y), rx: 4, fill: item.color,
+          }, svgNode('title', { text: `${fmtDate(point.date)} · ${item.name}: ${fmt(value, currency)}` })));
+        });
+      } else {
+        const path = points.map((point, i) => `${i ? 'L' : 'M'} ${xAt(i)} ${yAt(point.values[seriesIndex] || 0)}`).join(' ');
+        svg.appendChild(svgNode('path', {
+          d: path, fill: 'none', stroke: item.color,
+          'stroke-width': seriesIndex === 0 ? 2.4 : 1.8,
+          'stroke-dasharray': seriesIndex === 0 ? null : '6 5',
+          'vector-effect': 'non-scaling-stroke',
+        }));
+      }
+    });
+
+    const marker = svgNode('line', { x1: left, y1: top, x2: left, y2: top + plotH, stroke: 'rgba(255,255,255,0.32)', 'stroke-width': 1, display: 'none' });
+    svg.appendChild(marker);
+    stage.appendChild(svg);
+    const tip = h('div', { class: 'chart__tooltip', role: 'status', 'aria-live': 'polite' });
+    host.appendChild(tip);
+    let selected = points.length - 1;
+    let shown = -1;
+    const select = (index) => {
+      selected = Math.max(0, Math.min(points.length - 1, index));
+      if (selected === shown) return;
+      shown = selected;
+      marker.setAttribute('x1', xAt(selected));
+      marker.setAttribute('x2', xAt(selected));
+      marker.removeAttribute('display');
+      clear(tip);
+      tip.appendChild(h('b', { text: fmtDate(points[selected].date) }));
+      series.forEach((item, i) => tip.appendChild(h('div', { class: 'chart__tooltip-row' },
+        h('span', { class: 'muted', text: item.name }),
+        h('b', { class: 'num', text: fmt(points[selected].values[i] || 0, currency) }),
+      )));
+      tip.classList.add('chart__tooltip--in');
+    };
+    const hide = () => {
+      shown = -1;
+      marker.setAttribute('display', 'none');
+      tip.classList.remove('chart__tooltip--in');
+    };
+    svg.addEventListener('pointermove', (event) => {
+      const rect = svg.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left - (left / width) * rect.width) / ((plotW / width) * rect.width)));
+      select(asBars ? Math.min(points.length - 1, Math.floor(ratio * points.length)) : Math.round(ratio * (points.length - 1)));
+    });
+    svg.addEventListener('pointerleave', hide);
+    host.onfocus = () => select(selected);
+    host.onblur = hide;
+    host.onkeydown = (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(event.key)) return;
+      event.preventDefault();
+      if (event.key === 'Escape') hide();
+      else if (event.key === 'Home') select(0);
+      else if (event.key === 'End') select(points.length - 1);
+      else select(selected + (event.key === 'ArrowRight' ? 1 : -1));
+    };
+  }, height, label);
 }
 
-function withAlpha(hex, alpha) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
-
-/** Coloured key with the totals spelled out. */
 export function chartLegend(items, currency) {
-  return h(
-    'div',
-    { class: 'legend' },
-    items.map((item) =>
-      h(
-        'div',
-        { class: 'legend__item' },
-        h('span', { class: 'legend__dot', style: { background: item.color } }),
-        h('span', { class: 'legend__name ellipsis', text: item.name }),
-        h('b', { class: 'num', text: fmt(item.value, currency) }),
-      ),
-    ),
-  );
+  return h('div', { class: 'legend' }, items.map((item) => h('div', { class: 'legend__item' },
+    h('span', { class: 'legend__dot', style: { background: item.color } }),
+    h('span', { class: 'legend__name ellipsis', text: item.name }),
+    h('b', { class: 'num', text: fmt(item.value, currency) }),
+  )));
 }
 
-/** Doughnut plus the full key, so every slice has its number on the page. */
 export function donutChart({ slices, currency, size = 168 }) {
-  const total = slices.reduce((a, s) => a + s.value, 0);
-  const box = h('div', { style: { width: size + 'px', flex: 'none' } });
-
-  mount(
-    box,
-    () => ({
-      animationDuration: 420,
-      tooltip: {
-        trigger: 'item',
-        ...tooltipStyle,
-        formatter: (p) =>
-          `<div style="font-weight:600;margin-bottom:2px">${p.name}</div>` +
-          `<div><b>${fmt(p.value, currency)}</b> <span style="color:${MUTED}">${p.percent}%</span></div>`,
-      },
-      series: [
-        {
-          type: 'pie',
-          radius: ['58%', '88%'],
-          center: ['50%', '50%'],
-          avoidLabelOverlap: false,
-          label: { show: false },
-          labelLine: { show: false },
-          itemStyle: { borderColor: '#16132a', borderWidth: 2 },
-          emphasis: { scale: true, scaleSize: 4 },
-          data: slices.map((s) => ({ name: s.name, value: s.value, itemStyle: { color: s.color } })),
-        },
-      ],
-    }),
-    size,
-  );
-
-  return h(
-    'div',
-    { class: 'donut' },
-    box,
-    h(
-      'div',
-      { class: 'legend grow' },
-      slices.map((slice) =>
-        h(
-          'div',
-          { class: 'legend__item' },
-          h('span', { class: 'legend__dot', style: { background: slice.color } }),
-          h('span', { class: 'legend__name ellipsis', text: slice.name }),
-          h('b', { class: 'num', text: fmt(slice.value, currency) }),
-          h('span', { class: 'legend__pct num', text: total ? Math.round((slice.value / total) * 100) + '%' : '0%' }),
-        ),
-      ),
-    ),
-  );
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const box = h('div', { style: { width: `${size}px`, flex: 'none' } });
+  mount(box, (stage) => {
+    clear(stage);
+    const center = size / 2;
+    const radius = size * 0.35;
+    const svg = svgNode('svg', { viewBox: `0 0 ${size} ${size}` });
+    svg.appendChild(svgNode('circle', { cx: center, cy: center, r: radius, fill: 'none', stroke: 'rgba(255,255,255,0.06)', 'stroke-width': size * 0.21 }));
+    let offset = 0;
+    slices.forEach((slice) => {
+      const pct = total ? (slice.value / total) * 100 : 0;
+      svg.appendChild(svgNode('circle', {
+        cx: center, cy: center, r: radius, fill: 'none', stroke: slice.color,
+        'stroke-width': size * 0.21, 'stroke-dasharray': `${pct} ${100 - pct}`,
+        'stroke-dashoffset': -offset, 'stroke-linecap': 'butt', pathLength: 100,
+        transform: `rotate(-90 ${center} ${center})`,
+      }, svgNode('title', { text: `${slice.name}: ${fmt(slice.value, currency)} (${Math.round(pct)}%)` })));
+      offset += pct;
+    });
+    stage.appendChild(svg);
+  }, size, `Spending breakdown. ${slices.map((slice) => `${slice.name}: ${fmt(slice.value, currency)}`).join(', ')}.`);
+  return h('div', { class: 'donut' }, box, h('div', { class: 'legend grow' }, slices.map((slice) => h('div', { class: 'legend__item' },
+    h('span', { class: 'legend__dot', style: { background: slice.color } }),
+    h('span', { class: 'legend__name ellipsis', text: slice.name }),
+    h('b', { class: 'num', text: fmt(slice.value, currency) }),
+    h('span', { class: 'legend__pct num', text: total ? `${Math.round((slice.value / total) * 100)}%` : '0%'}),
+  ))));
 }
 
-/** A row of plain figures under a chart. */
 export function statRow(stats) {
-  return h(
-    'div',
-    { class: 'statrow' },
-    stats.map((s) => h('div', { class: 'statrow__cell' }, h('div', { class: 'tiny muted', text: s.label }), h('b', { class: 'num', text: s.value }))),
-  );
+  return h('div', { class: 'statrow' }, stats.map((item) => h('div', { class: 'statrow__cell' },
+    h('div', { class: 'tiny muted', text: item.label }), h('b', { class: 'num', text: item.value }),
+  )));
 }

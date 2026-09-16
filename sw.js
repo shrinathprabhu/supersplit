@@ -1,7 +1,7 @@
 // Offline-first service worker. The whole app is precached on install, so
 // after the first visit SuperSplit never needs the network again.
 
-const VERSION = 'supersplit-v14';
+const VERSION = 'supersplit-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -43,7 +43,6 @@ const ASSETS = [
   './assets/maskable-512.png',
   './assets/apple-touch-icon.png',
   './assets/fonts/geist-variable.woff2',
-  './vendor/echarts.common.min.js',
   './vendor/tesseract/tesseract.min.js',
   './vendor/tesseract/worker.min.js',
   './vendor/tesseract/core/tesseract-core-lstm.wasm.js',

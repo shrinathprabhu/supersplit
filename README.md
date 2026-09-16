@@ -170,7 +170,7 @@ manifest.webmanifest  PWA manifest
 sw.js                 offline cache, precaches the whole app
 css/app.css           design tokens and every component
 assets/               logo, favicon, PWA icons, Geist
-vendor/               Apache ECharts and Tesseract OCR, vendored for offline use
+vendor/               Tesseract OCR files, vendored for offline use
 js/
   app.js              boot and hash router
   core/
@@ -210,12 +210,9 @@ nothing snaps at a breakpoint. Widths work the same way: a constant 16px
 gutter, one container that grows with the window up to 1080px, and card
 collections that add columns as the room appears.
 
-Charts are Apache ECharts, vendored in `vendor/` (the "common" build: line,
-bar and pie, 698 KB raw and about 235 KB over the wire). It is fetched the
-first time a chart is needed rather than on boot, and precached so it keeps
-working offline. Tooltips are a bonus rather than the only way to read a
-chart: the legend and the figures under each chart always spell the numbers
-out.
+Charts use a small native SVG renderer and are drawn only when they approach
+the viewport. This avoids loading a chart framework while retaining tooltips,
+keyboard inspection, axes, legends and printed summaries.
 
 Receipt scanning uses vendored Tesseract.js 7, its LSTM WebAssembly core and
 the compact English model. The service worker precaches all three core variants
@@ -326,5 +323,5 @@ shows up locally rather than after a deploy.
 - The service worker precaches everything on install. The app's own HTML, JS
   and CSS are then served network-first, so a new version takes effect on the
   next load rather than the one after it, and it falls back to the cache the
-  moment there is no network. The font, icons and the charting library are
+  moment there is no network. The font, icons and vendored OCR runtime are
   served cache-first, since those only change with a new filename.

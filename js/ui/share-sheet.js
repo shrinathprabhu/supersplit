@@ -28,8 +28,11 @@ export function openShareSheet(opts) {
   const { kind, ledger, mode } = opts;
   let format = 'image';
   const cache = new Map();
+  const pending = new Map();
   let previewBox;
   let footer;
+  let closed = false;
+  let previewSequence = 0;
 
   const simpleDoc = () =>
     kind === 'receipt' ? buildReceiptDoc(ledger, opts.from, opts.to, mode) : buildSummaryDoc(ledger, mode);
@@ -37,6 +40,22 @@ export function openShareSheet(opts) {
 
   async function build(kindOfFormat) {
     if (cache.has(kindOfFormat)) return cache.get(kindOfFormat);
+    if (pending.has(kindOfFormat)) return pending.get(kindOfFormat);
+    const work = buildFormat(kindOfFormat);
+    pending.set(kindOfFormat, work);
+    try {
+      return await work;
+    } finally {
+      pending.delete(kindOfFormat);
+    }
+  }
+
+  function release(result) {
+    if (result.url) URL.revokeObjectURL(result.url);
+    if (result.previewUrl) URL.revokeObjectURL(result.previewUrl);
+  }
+
+  async function buildFormat(kindOfFormat) {
     let result;
     if (kindOfFormat === 'text') {
       const doc = simpleDoc();
@@ -50,7 +69,8 @@ export function openShareSheet(opts) {
       const pdf = await renderPdf(doc, { detailed: true });
       result = { doc, ...pdf };
     }
-    cache.set(kindOfFormat, result);
+    if (closed) release(result);
+    else cache.set(kindOfFormat, result);
     return result;
   }
 
@@ -59,21 +79,27 @@ export function openShareSheet(opts) {
   }
 
   async function refreshPreview() {
+    if (closed) return;
+    const requestedFormat = format;
+    const sequence = ++previewSequence;
     clear(previewBox);
+    renderFooter();
     previewBox.appendChild(
       h('div', { class: 'row', style: { padding: '28px', justifyContent: 'center', gap: '10px' } }, h('div', { class: 'spinner' }), h('span', { class: 'small muted', text: 'Rendering…' })),
     );
     try {
-      const result = await build(format);
+      const result = await build(requestedFormat);
+      if (closed || sequence !== previewSequence) return;
       clear(previewBox);
-      if (format === 'text') {
+      if (requestedFormat === 'text') {
         previewBox.appendChild(h('pre', { text: result.text }));
-      } else if (format === 'image') {
-        previewBox.appendChild(h('img', { src: result.url, alt: 'Preview' }));
+      } else if (requestedFormat === 'image') {
+        previewBox.appendChild(h('img', { src: result.url, width: result.width, height: result.height, alt: 'Preview' }));
       } else {
-        previewBox.appendChild(h('img', { src: result.previewUrl, alt: 'PDF preview' }));
+        previewBox.appendChild(h('img', { src: result.previewUrl, width: result.previewWidth, height: result.previewHeight, alt: 'PDF preview' }));
       }
     } catch (err) {
+      if (closed || sequence !== previewSequence) return;
       console.error(err);
       clear(previewBox);
       previewBox.appendChild(h('div', { class: 'banner', style: { margin: '12px' }, text: 'Could not render this format.' }));
@@ -82,7 +108,7 @@ export function openShareSheet(opts) {
   }
 
   function renderFooter() {
-    if (!footer) return;
+    if (!footer || closed) return;
     clear(footer);
     const ready = cache.has(format);
     const primaryLabel = format === 'text' ? 'Share text' : format === 'image' ? 'Share image' : 'Share PDF';
@@ -184,7 +210,10 @@ export function openShareSheet(opts) {
       return [];
     },
     onClose: () => {
-      for (const value of cache.values()) if (value.url) URL.revokeObjectURL(value.url);
+      closed = true;
+      previewSequence++;
+      for (const value of cache.values()) release(value);
+      cache.clear();
     },
   });
 }

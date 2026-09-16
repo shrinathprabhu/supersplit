@@ -5,6 +5,7 @@
 import { detailedBlocks, simpleBlocks } from './layout.js';
 import { paintBackground } from './image.js';
 import { T, font, fontsReady } from './paint.js';
+import { yieldToMain } from '../util/dom.js';
 
 const PT_W = 595.28; // A4 portrait
 const PT_H = 841.89;
@@ -12,7 +13,7 @@ const SCALE = 2; // canvas px per pt
 const MARGIN = 40; // pt
 
 /** Flow blocks across page canvases. */
-function paginate(doc, { detailed = true } = {}) {
+async function paginate(doc, { detailed = true } = {}) {
   const pageW = PT_W * SCALE;
   const pageH = PT_H * SCALE;
   const margin = MARGIN * SCALE;
@@ -36,14 +37,19 @@ function paginate(doc, { detailed = true } = {}) {
   };
 
   newPage();
+  let sliceStart = performance.now();
   for (const block of blocks) {
     if (y + block.h > margin + contentH && y > margin) newPage();
     block.draw(current, margin, y, contentW);
     y += block.h;
+    if (performance.now() - sliceStart >= 8) {
+      await yieldToMain();
+      sliceStart = performance.now();
+    }
   }
 
   // Footer on every page, once the count is known.
-  pages.forEach((page, i) => {
+  for (const [i, page] of pages.entries()) {
     const { ctx } = page;
     ctx.save();
     ctx.textAlign = 'right';
@@ -58,7 +64,11 @@ function paginate(doc, { detailed = true } = {}) {
     ctx.fillStyle = T.muted;
     ctx.fillText(doc.footerLabel || `${doc.groupName} · ${doc.subtitle}`, margin, pageH - margin * 0.55);
     ctx.restore();
-  });
+    if (performance.now() - sliceStart >= 8) {
+      await yieldToMain();
+      sliceStart = performance.now();
+    }
+  }
 
   return pages;
 }
@@ -81,13 +91,21 @@ function pdfString(str) {
  */
 export async function renderPdf(doc, options = {}) {
   await fontsReady();
-  const pages = paginate(doc, options);
-  const images = await Promise.all(
-    pages.map(
-      (p) =>
-        new Promise((resolve) => p.canvas.toBlob((b) => b.arrayBuffer().then((buf) => resolve(new Uint8Array(buf))), 'image/jpeg', 0.9)),
-    ),
-  );
+  await yieldToMain();
+  const pages = await paginate(doc, options);
+  const images = [];
+  for (const page of pages) {
+    const blob = await new Promise((resolve, reject) => page.canvas.toBlob(
+      (value) => value ? resolve(value) : reject(new Error('Could not encode a PDF page')),
+      'image/jpeg',
+      0.9,
+    ));
+    images.push(new Uint8Array(await blob.arrayBuffer()));
+    // Encoding every page at once lets browsers batch several expensive
+    // canvas jobs into one long task. Give input and painting a turn between
+    // pages instead.
+    await yieldToMain();
+  }
 
   const chunks = [];
   let length = 0;
@@ -155,9 +173,12 @@ export async function renderPdf(doc, options = {}) {
   push(xref);
   push(`trailer\n<< /Size ${objCount} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`);
 
+  const preview = new Blob([images[0]], { type: 'image/jpeg' });
   return {
     blob: new Blob(chunks, { type: 'application/pdf' }),
     pages: pageCount,
-    previewUrl: pages[0].canvas.toDataURL('image/jpeg', 0.6),
+    previewUrl: URL.createObjectURL(preview),
+    previewWidth: pages[0].canvas.width,
+    previewHeight: pages[0].canvas.height,
   };
 }

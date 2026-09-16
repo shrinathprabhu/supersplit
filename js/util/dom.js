@@ -37,6 +37,12 @@ export function clear(node) {
   return node;
 }
 
+/** Let input and paint run between chunks of non-urgent export work. */
+export function yieldToMain() {
+  if (globalThis.scheduler?.yield) return globalThis.scheduler.yield();
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 export function replace(node, ...children) {
   clear(node);
   append(node, children);

@@ -2,6 +2,7 @@
 
 import { T, fontsReady } from './paint.js';
 import { simpleBlocks, detailedBlocks } from './layout.js';
+import { yieldToMain } from '../util/dom.js';
 
 const MARGIN = 34;
 
@@ -25,6 +26,7 @@ export function paintBackground(ctx, w, h) {
  */
 export async function renderImage(doc, { detailed = false, width = 900, scale = 2 } = {}) {
   await fontsReady();
+  await yieldToMain();
   const contentW = width - MARGIN * 2;
   const blocks = (detailed ? detailedBlocks : simpleBlocks)(doc, contentW);
   const height = Math.ceil(blocks.reduce((a, b) => a + b.h, 0) + MARGIN * 2);
@@ -38,12 +40,17 @@ export async function renderImage(doc, { detailed = false, width = 900, scale = 
   paintBackground(ctx, width, height);
 
   let y = MARGIN;
+  let sliceStart = performance.now();
   for (const block of blocks) {
     block.draw(ctx, MARGIN, y, contentW);
     y += block.h;
+    if (performance.now() - sliceStart >= 8) {
+      await yieldToMain();
+      sliceStart = performance.now();
+    }
   }
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('Could not encode the image');
   return { blob, url: URL.createObjectURL(blob), width: canvas.width, height: canvas.height };
 }
-
